@@ -26,9 +26,11 @@ DEFAULT_CORS_ORIGINS = (
 
 
 def database_url() -> str:
-    url = os.getenv("DATABASE_URL")
+    url = os.getenv("DATABASE_URL") or os.getenv("POSTGRES_URL")
     if not url:
-        raise RuntimeError("DATABASE_URL is required. Copy .env.example to .env first.")
+        raise RuntimeError(
+            "DATABASE_URL (or POSTGRES_URL from the Vercel Supabase integration) is required."
+        )
     return url
 
 
