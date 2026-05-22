@@ -1,0 +1,8 @@
+-r requirements.txt
+uvicorn[standard]>=0.34,<1
+pandas>=2.3,<3
+lxml>=5.3,<6
+yfinance>=0.2,<1
+beautifulsoup4>=4.13,<5
+apscheduler>=3.10,<4
+gridstatus>=0.36,<1

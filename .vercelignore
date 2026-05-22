@@ -1,4 +1,4 @@
-requirements.txt
+requirements-dev.txt
 docker-compose.yml
 data/
 frontend/node_modules/
