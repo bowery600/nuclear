@@ -1,3 +1,5 @@
+requirements.txt
+docker-compose.yml
 data/
 frontend/node_modules/
 **/__pycache__/
