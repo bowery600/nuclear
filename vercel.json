@@ -2,10 +2,5 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "buildCommand": "cd frontend && npm run build",
   "installCommand": "cd frontend && npm ci",
-  "outputDirectory": "frontend/dist",
-  "functions": {
-    "api/**/*.py": {
-      "excludeFiles": "{data/**,frontend/**,**/__pycache__/**,**/*.pyc,**/.pytest_cache/**,**/.mypy_cache/**,**/.ruff_cache/**}"
-    }
-  }
+  "outputDirectory": "frontend/dist"
 }

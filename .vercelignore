@@ -1,0 +1,12 @@
+data/
+frontend/node_modules/
+**/__pycache__/
+**/*.pyc
+**/.pytest_cache/
+**/.mypy_cache/
+**/.ruff_cache/
+.venv/
+postgres-data/
+.github/
+sql/
+scripts/
