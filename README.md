@@ -136,6 +136,15 @@ python scripts/telemetry_workers.py nrc --dry-run
 python scripts/telemetry_workers.py lmp --dry-run
 ```
 
+## GitHub Actions
+
+To run the live telemetry sync from GitHub Actions, add these repository secrets:
+
+- `DATABASE_URL`: your Supabase/Postgres connection string.
+- `TELEMETRY_LMP_NODE_OVERRIDES`: optional JSON overrides or a path to a JSON file.
+
+The workflow at [.github/workflows/live-grid-telemetry-sync.yml](.github/workflows/live-grid-telemetry-sync.yml) runs the LMP worker every 15 minutes and can also be triggered manually from the Actions tab.
+
 ## Backend API
 
 Phase 5 adds a lightweight FastAPI layer in `api/main.py`.
@@ -152,19 +161,11 @@ Endpoints:
 - `GET /api/plants` returns a GeoJSON `FeatureCollection` of all plants. Each point uses `[longitude, latitude]` coordinates and includes current MW output, current power cost in USD/MWh, capacity percentage, parent company, ticker, and latest telemetry timestamps.
 - `GET /api/plants/{id}/ownership` returns the selected plant, parent company details, and shareholders sorted by ownership percentage descending.
 
-The API reads `DATABASE_URL` from `.env`. For map frontend development, CORS defaults to `localhost` and `127.0.0.1` ports `3000` and `5173`; set `API_CORS_ORIGINS` to a comma-separated list to override it.
+The API reads `DATABASE_URL` from `.env`. For map frontend development, CORS defaults to `localhost` and `127.0.0.1` ports `3000` and `5173`; set `API_CORS_ORIGINS` to a comma-separated list to override it. In production on Vercel, the frontend uses same-origin `/api` requests unless you set `VITE_API_BASE_URL` to a different backend URL.
 
 ## Interactive Map Frontend
 
-Phase 6 adds a Vite React frontend in `frontend/` with Mapbox GL JS.
-
-Create a frontend environment file:
-
-```powershell
-Copy-Item frontend/.env.example frontend/.env.local
-```
-
-Set `VITE_MAPBOX_TOKEN` in `frontend/.env.local`, then install and run:
+The frontend in `frontend/` is a Vite + React app that renders a custom SVG map built on D3 (`d3-geo`, `d3-zoom`) and an Albers USA projection. There is no third-party tile provider and no API token to configure.
 
 ```powershell
 cd frontend
@@ -172,7 +173,35 @@ npm install
 npm run dev
 ```
 
-The app loads `GET /api/plants` as GeoJSON, renders glowing Mapbox plant nodes, and fetches `GET /api/plants/{id}/ownership` when a marker is selected. `VITE_API_BASE_URL` defaults to `http://localhost:8000`.
+The map loads `GET /api/plants` as GeoJSON and draws:
+
+- US state outlines from `us-atlas` (TopoJSON).
+- ISO/RTO regions (PJM, MISO, ERCOT, CAISO, NYISO, ISO-NE, SPP) from `frontend/src/map/iso-regions.json`, color-tinted as a heatmap of average LMP per region.
+- Plant nodes that pulse with live output intensity, color-coded by capacity utilization or LMP price (Output/Price toggle).
+- Hover tooltips, ISO region quick-jump chips, and parent-company sibling lines drawn when a plant is selected.
+
+Selecting a plant fetches `GET /api/plants/{id}/ownership` to populate the ownership panel. `VITE_API_BASE_URL` should point at your backend only if you are not using the same-origin Vercel setup.
+
+## Vercel And Supabase
+
+This repository is set up so the frontend can deploy from Vercel and the database can live in Supabase.
+
+Vercel setup:
+
+1. Connect the GitHub repo as a Vercel project.
+1. Keep the project root at the repository root so Vercel sees both the frontend and the Python API in `api/`.
+1. Add these environment variables in Vercel:
+  - `DATABASE_URL`: the Supabase Postgres connection string for the database.
+  - `VITE_API_BASE_URL`: leave unset for same-origin `/api` calls, or set it to a separate backend URL if you split the API out later.
+1. Redeploy after changing variables.
+
+Supabase setup:
+
+1. Create a Supabase project and copy the Postgres connection string from the database settings.
+1. Run the SQL files in [sql/](sql/) in order, or apply them through the Supabase SQL editor.
+1. Use the Supabase connection string as `DATABASE_URL` in Vercel and in any local `.env` file.
+
+The root [vercel.json](vercel.json) builds the Vite frontend from `frontend/` and deploys the Python API from `api/main.py`.
 
 Exact pricing-node overrides can be supplied as JSON in `TELEMETRY_LMP_NODE_OVERRIDES`, either directly or as a path to a JSON file:
 

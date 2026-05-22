@@ -38,30 +38,151 @@ button {
     linear-gradient(135deg, #07090f 0%, #101722 50%, #080b12 100%);
 }
 
-.map-stage,
-.map-canvas {
+.map-stage {
   position: absolute;
   inset: 0;
 }
 
-.map-canvas {
-  background: #07090f;
-}
-
-.mapboxgl-canvas {
-  outline: none;
-}
-
-.mapboxgl-ctrl-group {
+.nuclear-map {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(circle at 20% 20%, rgba(34, 211, 238, 0.07), transparent 45%),
+    radial-gradient(circle at 80% 80%, rgba(251, 113, 133, 0.05), transparent 45%),
+    #050810;
   overflow: hidden;
-  border: 1px solid rgba(148, 163, 184, 0.24);
-  background: rgba(15, 23, 42, 0.86);
-  box-shadow: 0 18px 44px rgba(0, 0, 0, 0.36);
 }
 
-.mapboxgl-ctrl-group button {
-  width: 34px;
-  height: 34px;
+.nuclear-map-svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  cursor: grab;
+  user-select: none;
+}
+
+.nuclear-map-svg:active {
+  cursor: grabbing;
+}
+
+.iso-region {
+  transition: fill-opacity 220ms ease;
+  pointer-events: none;
+}
+
+.iso-region.is-active {
+  fill-opacity: 0.22 !important;
+}
+
+.state-outline {
+  pointer-events: none;
+}
+
+.plant-node {
+  cursor: pointer;
+}
+
+.plant-node:hover .plant-core {
+  filter: brightness(1.18);
+}
+
+.plant-node.is-selected .plant-core {
+  filter: brightness(1.25) drop-shadow(0 0 6px rgba(255, 255, 255, 0.45));
+}
+
+.plant-tooltip {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 25;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 180px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  border: 1px solid rgba(148, 163, 184, 0.28);
+  background: rgba(8, 13, 22, 0.92);
+  box-shadow: 0 18px 44px rgba(0, 0, 0, 0.55);
+  backdrop-filter: blur(14px);
+  pointer-events: none;
+  color: #e2e8f0;
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+.plant-tooltip strong {
+  font-size: 13px;
+  color: #f8fafc;
+}
+
+.plant-tooltip .tt-sub {
+  color: #94a3b8;
+  font-size: 11px;
+}
+
+.plant-tooltip .tt-metrics {
+  display: flex;
+  gap: 10px;
+  margin-top: 4px;
+  color: #cbd5e1;
+}
+
+.plant-tooltip .tt-metrics span {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.plant-tooltip .tt-iso {
+  align-self: flex-start;
+  margin-top: 2px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: rgba(34, 211, 238, 0.14);
+  color: #67e8f9;
+  font-size: 10px;
+  letter-spacing: 0.06em;
+}
+
+.region-chips {
+  position: absolute;
+  z-index: 20;
+  left: 18px;
+  bottom: 18px;
+  display: flex;
+  gap: 6px;
+  padding: 6px;
+  border-radius: 10px;
+  border: 1px solid rgba(148, 163, 184, 0.22);
+  background: rgba(8, 13, 22, 0.78);
+  backdrop-filter: blur(14px);
+  box-shadow: 0 18px 44px rgba(0, 0, 0, 0.42);
+}
+
+.region-chip {
+  appearance: none;
+  border: 1px solid transparent;
+  background: transparent;
+  color: #94a3b8;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  padding: 6px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 160ms ease, color 160ms ease, border-color 160ms ease;
+}
+
+.region-chip:hover {
+  color: #e2e8f0;
+  background: rgba(148, 163, 184, 0.08);
+}
+
+.region-chip.is-active {
+  color: #050810;
+  background: linear-gradient(135deg, #67e8f9, #facc15);
+  border-color: rgba(255, 255, 255, 0.18);
 }
 
 .top-rail {
@@ -465,8 +586,7 @@ h1 {
   background: linear-gradient(90deg, #22d3ee, #facc15, #fb7185);
 }
 
-.panel-placeholder,
-.token-gate {
+.panel-placeholder {
   display: grid;
   height: 100%;
   place-items: center;
@@ -474,45 +594,21 @@ h1 {
   text-align: center;
 }
 
-.panel-placeholder svg,
-.token-gate svg {
+.panel-placeholder svg {
   color: #67e8f9;
 }
 
-.panel-placeholder h2,
-.token-gate h2 {
+.panel-placeholder h2 {
   margin-top: 12px;
   color: #f8fafc;
   font-size: 1.2rem;
 }
 
-.panel-placeholder p,
-.token-gate p {
+.panel-placeholder p {
   margin-top: 8px;
   color: #cbd5e1;
   font-size: 0.92rem;
   line-height: 1.45;
-}
-
-.token-gate {
-  position: absolute;
-  inset: 0 378px 0 0;
-  background:
-    linear-gradient(rgba(7, 9, 15, 0.72), rgba(7, 9, 15, 0.82)),
-    repeating-linear-gradient(
-      0deg,
-      rgba(148, 163, 184, 0.08) 0,
-      rgba(148, 163, 184, 0.08) 1px,
-      transparent 1px,
-      transparent 42px
-    ),
-    repeating-linear-gradient(
-      90deg,
-      rgba(148, 163, 184, 0.08) 0,
-      rgba(148, 163, 184, 0.08) 1px,
-      transparent 1px,
-      transparent 42px
-    );
 }
 
 .spin {
@@ -574,10 +670,6 @@ h1 {
     height: 348px;
   }
 
-  .token-gate {
-    inset: 0;
-    padding-bottom: 360px;
-  }
 }
 
 @media (max-width: 680px) {

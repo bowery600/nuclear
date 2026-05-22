@@ -1,5 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import mapboxgl from "mapbox-gl";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Activity,
   AlertCircle,
@@ -13,15 +12,10 @@ import {
   X,
   Zap
 } from "lucide-react";
+import NuclearMap from "./map/NuclearMap";
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
-const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN;
-const HAS_MAPBOX_TOKEN =
-  Boolean(MAPBOX_TOKEN) && !String(MAPBOX_TOKEN).includes("your_mapbox_token_here");
-const PLANTS_SOURCE_ID = "plants";
-const PLANT_GLOW_LAYER_ID = "plant-glow";
-const PLANT_NODE_LAYER_ID = "plant-node";
-const PLANT_RING_LAYER_ID = "plant-ring";
+const API_BASE_URL =
+  import.meta.env.VITE_API_BASE_URL || (import.meta.env.DEV ? "http://localhost:8000" : "");
 
 const emptyCollection = {
   type: "FeatureCollection",
@@ -135,125 +129,7 @@ function usePlants() {
   return { plants, status, error };
 }
 
-function metricColorExpression(metricMode) {
-  if (metricMode === "price") {
-    return [
-      "interpolate",
-      ["linear"],
-      ["coalesce", ["to-number", ["get", "current_power_cost_usd_mwh"]], 0],
-      0,
-      "#22d3ee",
-      35,
-      "#2dd4bf",
-      65,
-      "#f59e0b",
-      100,
-      "#f97316"
-    ];
-  }
-
-  return [
-    "interpolate",
-    ["linear"],
-    ["coalesce", ["to-number", ["get", "capacity_percentage"]], 0],
-    0,
-    "#60a5fa",
-    45,
-    "#22d3ee",
-    75,
-    "#facc15",
-    100,
-    "#fb7185"
-  ];
-}
-
-function addPlantLayers(map, metricMode) {
-  if (!map.getSource(PLANTS_SOURCE_ID)) {
-    map.addSource(PLANTS_SOURCE_ID, {
-      type: "geojson",
-      data: emptyCollection
-    });
-  }
-
-  if (!map.getLayer(PLANT_GLOW_LAYER_ID)) {
-    map.addLayer({
-      id: PLANT_GLOW_LAYER_ID,
-      type: "circle",
-      source: PLANTS_SOURCE_ID,
-      paint: {
-        "circle-radius": [
-          "interpolate",
-          ["linear"],
-          ["coalesce", ["to-number", ["get", "total_mw_capacity"]], 800],
-          500,
-          16,
-          3500,
-          34
-        ],
-        "circle-color": metricColorExpression(metricMode),
-        "circle-opacity": 0.26,
-        "circle-blur": 0.85
-      }
-    });
-  }
-
-  if (!map.getLayer(PLANT_NODE_LAYER_ID)) {
-    map.addLayer({
-      id: PLANT_NODE_LAYER_ID,
-      type: "circle",
-      source: PLANTS_SOURCE_ID,
-      paint: {
-        "circle-radius": [
-          "interpolate",
-          ["linear"],
-          ["coalesce", ["to-number", ["get", "total_mw_capacity"]], 800],
-          500,
-          5,
-          3500,
-          10
-        ],
-        "circle-color": metricColorExpression(metricMode),
-        "circle-stroke-color": "#f8fafc",
-        "circle-stroke-opacity": 0.92,
-        "circle-stroke-width": 1.4,
-        "circle-opacity": 0.95
-      }
-    });
-  }
-
-  if (!map.getLayer(PLANT_RING_LAYER_ID)) {
-    map.addLayer({
-      id: PLANT_RING_LAYER_ID,
-      type: "circle",
-      source: PLANTS_SOURCE_ID,
-      paint: {
-        "circle-radius": [
-          "interpolate",
-          ["linear"],
-          ["coalesce", ["to-number", ["get", "total_mw_capacity"]], 800],
-          500,
-          9,
-          3500,
-          15
-        ],
-        "circle-color": "rgba(255,255,255,0)",
-        "circle-stroke-color": "#ffffff",
-        "circle-stroke-opacity": [
-          "case",
-          ["boolean", ["feature-state", "selected"], false],
-          0.9,
-          0
-        ],
-        "circle-stroke-width": 2
-      }
-    });
-  }
-}
-
 function App() {
-  const mapContainerRef = useRef(null);
-  const mapRef = useRef(null);
-  const selectedIdRef = useRef(null);
   const { plants, status, error } = usePlants();
   const [query, setQuery] = useState("");
   const [metricMode, setMetricMode] = useState("output");
@@ -261,7 +137,6 @@ function App() {
   const [ownership, setOwnership] = useState(null);
   const [ownershipStatus, setOwnershipStatus] = useState("idle");
   const [ownershipError, setOwnershipError] = useState("");
-  const [mapReady, setMapReady] = useState(false);
 
   const filteredPlants = useMemo(() => {
     const normalizedQuery = query.trim().toLowerCase();
@@ -312,137 +187,18 @@ function App() {
     };
   }, [plants]);
 
-  const setSelectedFeatureState = useCallback((featureId) => {
-    const map = mapRef.current;
-    if (!map?.getSource(PLANTS_SOURCE_ID)) {
-      return;
-    }
-
-    if (selectedIdRef.current !== null) {
-      map.setFeatureState(
-        { source: PLANTS_SOURCE_ID, id: selectedIdRef.current },
-        { selected: false }
-      );
-    }
-
-    selectedIdRef.current = featureId;
-
-    if (featureId !== null) {
-      map.setFeatureState({ source: PLANTS_SOURCE_ID, id: featureId }, { selected: true });
-    }
-  }, []);
-
-  const selectPlant = useCallback(
-    (feature) => {
-      const props = feature?.properties || {};
-      setSelectedPlant(feature);
+  const selectPlant = useCallback((feature) => {
+    if (!feature) {
+      setSelectedPlant(null);
       setOwnership(null);
       setOwnershipError("");
-      setSelectedFeatureState(feature?.id ?? props.id ?? null);
-
-      if (feature?.geometry?.coordinates && mapRef.current) {
-        mapRef.current.easeTo({
-          center: feature.geometry.coordinates,
-          zoom: Math.max(mapRef.current.getZoom(), 5.4),
-          duration: 650,
-          offset: [-180, 0]
-        });
-      }
-    },
-    [setSelectedFeatureState]
-  );
-
-  useEffect(() => {
-    if (!HAS_MAPBOX_TOKEN || mapRef.current || !mapContainerRef.current) {
+      setOwnershipStatus("idle");
       return;
     }
-
-    mapboxgl.accessToken = MAPBOX_TOKEN;
-    const map = new mapboxgl.Map({
-      container: mapContainerRef.current,
-      style: "mapbox://styles/mapbox/dark-v11",
-      center: [-97.6, 39.4],
-      zoom: 3.15,
-      minZoom: 2.4,
-      maxZoom: 12,
-      attributionControl: false
-    });
-
-    mapRef.current = map;
-    if (import.meta.env.DEV) {
-      window.nuclearMap = map;
-    }
-    map.addControl(
-      new mapboxgl.NavigationControl({
-        visualizePitch: true
-      }),
-      "bottom-left"
-    );
-    map.addControl(new mapboxgl.AttributionControl({ compact: true }), "bottom-right");
-
-    map.on("load", () => {
-      addPlantLayers(map, "output");
-      setMapReady(true);
-    });
-
-    map.on("click", PLANT_NODE_LAYER_ID, (event) => {
-      const feature = event.features?.[0];
-      if (feature) {
-        selectPlant(feature);
-      }
-    });
-
-    map.on("mouseenter", PLANT_NODE_LAYER_ID, () => {
-      map.getCanvas().style.cursor = "pointer";
-    });
-
-    map.on("mouseleave", PLANT_NODE_LAYER_ID, () => {
-      map.getCanvas().style.cursor = "";
-    });
-
-    return () => {
-      map.remove();
-      mapRef.current = null;
-      if (import.meta.env.DEV) {
-        delete window.nuclearMap;
-      }
-    };
-  }, [selectPlant]);
-
-  useEffect(() => {
-    const map = mapRef.current;
-    if (!mapReady || !map?.getSource(PLANTS_SOURCE_ID)) {
-      return;
-    }
-
-    map.getSource(PLANTS_SOURCE_ID).setData(filteredPlants);
-
-    if (filteredPlants.features.length > 0 && !selectedPlant) {
-      const bounds = new mapboxgl.LngLatBounds();
-      filteredPlants.features.forEach((feature) => {
-        bounds.extend(feature.geometry.coordinates);
-      });
-      map.fitBounds(bounds, {
-        padding: { top: 120, right: 420, bottom: 80, left: 80 },
-        maxZoom: 4.2,
-        duration: 700
-      });
-    }
-  }, [filteredPlants, mapReady, selectedPlant]);
-
-  useEffect(() => {
-    const map = mapRef.current;
-    if (!mapReady) {
-      return;
-    }
-
-    const color = metricColorExpression(metricMode);
-    [PLANT_GLOW_LAYER_ID, PLANT_NODE_LAYER_ID].forEach((layerId) => {
-      if (map.getLayer(layerId)) {
-        map.setPaintProperty(layerId, "circle-color", color);
-      }
-    });
-  }, [metricMode, mapReady]);
+    setSelectedPlant(feature);
+    setOwnership(null);
+    setOwnershipError("");
+  }, []);
 
   useEffect(() => {
     const plantId = selectedPlant?.properties?.id;
@@ -479,20 +235,18 @@ function App() {
   }, [selectedPlant]);
 
   function closePanel() {
-    setSelectedPlant(null);
-    setOwnership(null);
-    setOwnershipStatus("idle");
-    setSelectedFeatureState(null);
+    selectPlant(null);
   }
 
   return (
     <main className="app-shell">
       <section className="map-stage" aria-label="Nuclear plant map">
-        {HAS_MAPBOX_TOKEN ? (
-          <div ref={mapContainerRef} className="map-canvas" />
-        ) : (
-          <TokenGate />
-        )}
+        <NuclearMap
+          plants={filteredPlants}
+          selectedPlant={selectedPlant}
+          onSelect={selectPlant}
+          metricMode={metricMode}
+        />
 
         <TopRail
           query={query}
@@ -614,18 +368,6 @@ function MetricStrip({ stats, status, error }) {
         );
       })}
     </aside>
-  );
-}
-
-function TokenGate() {
-  return (
-    <div className="token-gate">
-      <div>
-        <MapPin size={28} />
-        <h2>Mapbox token required</h2>
-        <p>Add `VITE_MAPBOX_TOKEN` in `frontend/.env.local` to render the interactive canvas.</p>
-      </div>
-    </div>
   );
 }
 
