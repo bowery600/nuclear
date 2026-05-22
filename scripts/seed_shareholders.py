@@ -286,7 +286,7 @@ def main() -> None:
 
     ticker_allowlist = {ticker.upper().strip() for ticker in args.tickers} if args.tickers else None
 
-    with psycopg.connect(database_url()) as conn:
+    with psycopg.connect(database_url(), prepare_threshold=None) as conn:
         with conn.cursor() as cur:
             companies = load_companies(cur, ticker_allowlist)
             if not companies:

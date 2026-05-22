@@ -467,7 +467,7 @@ def seed_database(matches: list[MatchedSite]) -> None:
     if not database_url:
         raise SystemExit("DATABASE_URL is required. Copy .env.example to .env first.")
 
-    with psycopg.connect(database_url) as conn:
+    with psycopg.connect(database_url, prepare_threshold=None) as conn:
         with conn.cursor() as cur:
             for match in matches:
                 company_id = upsert_company(cur, match.company_ticker, match.parent_company_name)

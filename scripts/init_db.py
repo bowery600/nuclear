@@ -26,7 +26,7 @@ def main() -> None:
     if not sql_files:
         raise SystemExit(f"No SQL files found in {sql_dir}")
 
-    with psycopg.connect(database_url) as conn:
+    with psycopg.connect(database_url, prepare_threshold=None) as conn:
         for sql_file in sql_files:
             sql = sql_file.read_text(encoding="utf-8")
             with conn.cursor() as cur:

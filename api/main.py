@@ -71,7 +71,7 @@ def cors_origins() -> list[str]:
 
 @contextmanager
 def db_connection() -> Iterator[psycopg.Connection]:
-    with psycopg.connect(database_url(), row_factory=dict_row) as conn:
+    with psycopg.connect(database_url(), row_factory=dict_row, prepare_threshold=None) as conn:
         yield conn
 
 

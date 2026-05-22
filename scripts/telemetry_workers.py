@@ -320,7 +320,7 @@ def run_nrc_worker(dry_run: bool = False) -> int:
     status_url = resolve_nrc_power_status_url()
     rows = parse_nrc_power_status(fetch_text(status_url))
 
-    with psycopg.connect(database_url()) as conn:
+    with psycopg.connect(database_url(), prepare_threshold=None) as conn:
         with conn.cursor() as cur:
             plants = load_plants(cur)
             statuses, unmatched = build_nrc_statuses(plants, rows)
@@ -553,7 +553,7 @@ def run_lmp_worker(dry_run: bool = False) -> int:
     skipped: list[dict[str, str]] = []
     updates: list[PlantLMP] = []
 
-    with psycopg.connect(database_url()) as conn:
+    with psycopg.connect(database_url(), prepare_threshold=None) as conn:
         with conn.cursor() as cur:
             plants = load_plants(cur)
             plants_by_node: dict[GridNode, list[Plant]] = {}
