@@ -15,3 +15,13 @@ frontend/dist/
 frontend/.env.local
 
 .vercel
+.claude/settings.local.json
+.mcp.json
+
+# scratch / one-off
+body.json
+body.txt
+resp.json
+resp.html
+resp2.html
+response.txt
