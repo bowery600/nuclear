@@ -7,11 +7,27 @@ from decimal import Decimal
 from pathlib import Path
 from typing import Any, Iterator
 
+from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
+
 import psycopg
 from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from psycopg.rows import dict_row
+
+
+LIBPQ_QUERY_KEYS = {
+    "host", "hostaddr", "port", "dbname", "user", "password", "passfile",
+    "channel_binding", "connect_timeout", "client_encoding", "options",
+    "application_name", "fallback_application_name", "keepalives",
+    "keepalives_idle", "keepalives_interval", "keepalives_count",
+    "tcp_user_timeout", "replication", "gssencmode", "sslmode",
+    "requiressl", "sslcompression", "sslcert", "sslkey", "sslpassword",
+    "sslcertmode", "sslrootcert", "sslcrl", "sslcrldir", "sslsni",
+    "requirepeer", "ssl_min_protocol_version", "ssl_max_protocol_version",
+    "krbsrvname", "gsslib", "gssdelegation", "service", "target_session_attrs",
+    "load_balance_hosts",
+}
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
@@ -25,13 +41,25 @@ DEFAULT_CORS_ORIGINS = (
 )
 
 
+def _clean_libpq_url(url: str) -> str:
+    parts = urlsplit(url)
+    if not parts.query:
+        return url
+    kept = [(k, v) for k, v in parse_qsl(parts.query, keep_blank_values=False) if k and k in LIBPQ_QUERY_KEYS]
+    return urlunsplit((parts.scheme, parts.netloc, parts.path, urlencode(kept), parts.fragment))
+
+
 def database_url() -> str:
-    url = os.getenv("DATABASE_URL") or os.getenv("POSTGRES_URL")
+    url = (
+        os.getenv("DATABASE_URL")
+        or os.getenv("POSTGRES_URL_NON_POOLING")
+        or os.getenv("POSTGRES_URL")
+    )
     if not url:
         raise RuntimeError(
             "DATABASE_URL (or POSTGRES_URL from the Vercel Supabase integration) is required."
         )
-    return url
+    return _clean_libpq_url(url)
 
 
 def cors_origins() -> list[str]:
