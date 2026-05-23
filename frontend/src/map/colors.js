@@ -60,3 +60,46 @@ export function colorForIsoHeatmap(avgPrice) {
   const base = colorForPrice(avgPrice);
   return base;
 }
+
+export function getPlantStatusDetails(plant) {
+  if (!plant) {
+    return {
+      type: "baseload",
+      label: "Normal Baseload Operation",
+      color: "#10b981"
+    };
+  }
+  const props = plant.properties || {};
+  const status = props.timelineStatus || "Active";
+  const capacityPct = Number(props.capacity_percentage) || 0;
+
+
+  if (status === "Construction") {
+    return {
+      type: "construction",
+      label: "Under Construction",
+      color: "#38bdf8"
+    };
+  } else if (status === "Decommissioned") {
+    return {
+      type: "decommissioned",
+      label: "Decommissioned",
+      color: "#64748b"
+    };
+  } else {
+    // Active states: check capacity percentage for refueling outages
+    if (capacityPct < 15) {
+      return {
+        type: "refueling",
+        label: "Planned Refueling Outage",
+        color: "#fbbf24"
+      };
+    }
+    return {
+      type: "baseload",
+      label: "Normal Baseload Operation",
+      color: "#10b981"
+    };
+  }
+}
+

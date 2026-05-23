@@ -24,6 +24,17 @@ NON_PUBLIC_TICKERS = {
     "STP": "STP Nuclear Operating Company is not publicly traded.",
     "TVA": "Tennessee Valley Authority is not publicly traded.",
     "WCNOC": "Wolf Creek Nuclear Operating Corporation is not publicly traded.",
+    "CPS": "CPS Energy is a municipal utility and not publicly traded.",
+    "AE": "Austin Energy is a municipal utility and not publicly traded.",
+    "OGLE": "Oglethorpe Power Corporation is an electric cooperative and not publicly traded.",
+    "MEAG": "Municipal Electric Authority of Georgia is a public corporation and not publicly traded.",
+    "DALTON": "Dalton Utilities is a municipal utility and not publicly traded.",
+    "SRP": "Salt River Project is a municipal utility and not publicly traded.",
+    "EPE": "El Paso Electric Company is privately owned by an infrastructure fund and not publicly traded.",
+    "SCPPA": "Southern California Public Power Authority is a joint powers authority and not publicly traded.",
+    "LADWP": "Los Angeles Department of Water and Power is a municipal utility and not publicly traded.",
+    "NCMPA1": "North Carolina Municipal Power Agency No. 1 is a joint municipal agency and not publicly traded.",
+    "NCEMPA": "North Carolina Eastern Municipal Power Agency is a joint municipal agency and not publicly traded.",
 }
 COMMON_COMPANY_WORDS = {
     "co",

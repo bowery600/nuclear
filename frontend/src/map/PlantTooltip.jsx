@@ -1,4 +1,5 @@
 import { Zap, DollarSign, Activity } from "lucide-react";
+import { getPlantStatusDetails } from "./colors";
 
 function fmt(value, digits = 0) {
   if (value === null || value === undefined || value === "") return "--";
@@ -10,6 +11,8 @@ function fmt(value, digits = 0) {
 export default function PlantTooltip({ plant, x, y }) {
   if (!plant) return null;
   const props = plant.properties || {};
+  const { type: statusType, label: statusLabel } = getPlantStatusDetails(plant);
+  
   return (
     <div
       className="plant-tooltip"
@@ -18,8 +21,13 @@ export default function PlantTooltip({ plant, x, y }) {
     >
       <strong>{props.plant_name || "Unknown plant"}</strong>
       <span className="tt-sub">
-        {[props.state, props.parent_company_name].filter(Boolean).join(" • ")}
+        {[
+          props.state, 
+          props.parent_company_name,
+          statusType !== "baseload" ? `(${statusLabel})` : ""
+        ].filter(Boolean).join(" • ")}
       </span>
+
       <div className="tt-metrics">
         <span>
           <Zap size={12} /> {fmt(props.current_mw_output)} MW

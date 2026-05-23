@@ -1,5 +1,5 @@
 import { memo } from "react";
-import { colorForPlant } from "./colors";
+import { colorForPlant, getPlantStatusDetails } from "./colors";
 
 function sizeFromCapacity(capacityMw) {
   const cap = Number.isFinite(capacityMw) ? capacityMw : 800;
@@ -12,6 +12,7 @@ function sizeFromCapacity(capacityMw) {
 }
 
 // Hyperboloid cooling tower silhouette, centered at origin.
+// Width = 2 * size, height ≈ 2.6 * size, narrower at the waist, slight top lip.
 // Width = 2 * size, height ≈ 2.6 * size, narrower at the waist, slight top lip.
 function towerPath(size) {
   const baseHalf = size;
@@ -31,7 +32,17 @@ function towerPath(size) {
 
 function PlantNodeImpl({ plant, x, y, metricMode, selected, onHover, onLeave, onSelect, scale }) {
   const props = plant.properties || {};
-  const color = colorForPlant(plant, metricMode);
+  const status = props.timelineStatus || "Active";
+  const { type: pulseType, label: statusLabel, color: pulseColor } = getPlantStatusDetails(plant);
+  const isRefueling = pulseType === "refueling";
+  
+  let color = colorForPlant(plant, metricMode);
+  if (status === "Construction") {
+    color = "#38bdf8"; // Blueprint cyan
+  } else if (status === "Decommissioned") {
+    color = "#475569"; // Slate gray
+  }
+
   const { node, glow } = sizeFromCapacity(Number(props.total_mw_capacity));
   const invScale = scale > 0 ? 1 / scale : 1;
   const outputRatio = Math.max(
@@ -42,7 +53,13 @@ function PlantNodeImpl({ plant, x, y, metricMode, selected, onHover, onLeave, on
   const tower = towerPath(node);
   const topY = -node * 1.4;
 
-  const label = [props.plant_name, props.state].filter(Boolean).join(", ") || "Plant";
+  const label = [
+    props.plant_name, 
+    props.state,
+    status === "Construction" ? "(Under Construction)" : 
+    status === "Decommissioned" ? "(Decommissioned)" : 
+    isRefueling ? "(Refueling Outage)" : ""
+  ].filter(Boolean).join(", ") || "Plant";
 
   const handleKeyDown = (event) => {
     if (event.key === "Enter" || event.key === " ") {
@@ -70,71 +87,90 @@ function PlantNodeImpl({ plant, x, y, metricMode, selected, onHover, onLeave, on
         onSelect?.(plant);
       }}
     >
+      {/* High-performance status pulse ring */}
       <circle
-        className="plant-glow"
-        r={glow}
-        fill={color}
-        opacity={0.26}
-        filter="url(#plantGlow)"
+        className={`status-pulse-ring pulse-${pulseType}`}
+        cx={0}
+        cy={0}
+        r={node + 2}
+        stroke={pulseColor}
+        fill="none"
       />
 
-      {/* Steam plume rising from the tower top */}
-      <g className="plant-steam" pointerEvents="none">
-        <ellipse
-          cx={0}
-          cy={topY - node * 0.4}
-          rx={node * 0.55}
-          ry={node * 0.32}
-          fill="#e2e8f0"
-          opacity={0.55}
-        >
-          <animate
-            attributeName="cy"
-            values={`${topY - node * 0.3};${topY - node * 1.4}`}
-            dur={`${steamDuration}s`}
-            repeatCount="indefinite"
-          />
-          <animate
-            attributeName="opacity"
-            values="0.55;0"
-            dur={`${steamDuration}s`}
-            repeatCount="indefinite"
-          />
-          <animate
-            attributeName="rx"
-            values={`${node * 0.45};${node * 0.9}`}
-            dur={`${steamDuration}s`}
-            repeatCount="indefinite"
-          />
-        </ellipse>
-      </g>
+      {/* Outer glow - hide for decommissioned, faint for construction */}
+      {status !== "Decommissioned" && (
+        <circle
+          className="plant-glow"
+          r={glow}
+          fill={color}
+          opacity={status === "Construction" ? 0.12 : 0.26}
+          filter="url(#plantGlow)"
+        />
+      )}
 
-      {/* Cooling tower silhouette */}
+      {/* Steam plume rising from the tower top - active and not refueling */}
+      {status === "Active" && !isRefueling && (
+        <g className="plant-steam" pointerEvents="none">
+          <ellipse
+            cx={0}
+            cy={topY - node * 0.4}
+            rx={node * 0.55}
+            ry={node * 0.32}
+            fill="#e2e8f0"
+            opacity={0.55}
+          >
+            <animate
+              attributeName="cy"
+              values={`${topY - node * 0.3};${topY - node * 1.4}`}
+              dur={`${steamDuration}s`}
+              repeatCount="indefinite"
+            />
+            <animate
+              attributeName="opacity"
+              values="0.55;0"
+              dur={`${steamDuration}s`}
+              repeatCount="indefinite"
+            />
+            <animate
+              attributeName="rx"
+              values={`${node * 0.45};${node * 0.9}`}
+              dur={`${steamDuration}s`}
+              repeatCount="indefinite"
+            />
+          </ellipse>
+        </g>
+      )}
+
+      {/* Cooling tower silhouette - dashed outline for construction */}
       <path
         className="plant-core"
         d={tower}
-        fill={color}
-        stroke="#f8fafc"
-        strokeOpacity={0.92}
-        strokeWidth={1}
+        fill={status === "Construction" ? "transparent" : color}
+        fillOpacity={status === "Construction" ? 0 : 0.85}
+        stroke={status === "Construction" ? "#38bdf8" : "#f8fafc"}
+        strokeOpacity={status === "Construction" ? 0.75 : 0.92}
+        strokeWidth={status === "Construction" ? 1.2 : 1}
+        strokeDasharray={status === "Construction" ? "3,3" : "none"}
         strokeLinejoin="round"
       />
 
-      {/* Inner curve highlight for hyperboloid feel */}
-      <path
-        d={`M ${-node * 0.7},${topY + node * 0.15} L ${node * 0.7},${topY + node * 0.15}`}
-        stroke="rgba(255,255,255,0.35)"
-        strokeWidth={0.8}
-        fill="none"
-        pointerEvents="none"
-      />
+      {/* Inner curve highlight for hyperboloid feel - only for solid towers */}
+      {status !== "Construction" && (
+        <path
+          d={`M ${-node * 0.7},${topY + node * 0.15} L ${node * 0.7},${topY + node * 0.15}`}
+          stroke="rgba(255,255,255,0.35)"
+          strokeWidth={0.8}
+          fill="none"
+          pointerEvents="none"
+        />
+      )}
 
       {selected && (
         <path
           className="plant-ring"
           d={towerPath(node + 4)}
           fill="none"
-          stroke="#ffffff"
+          stroke={status === "Construction" ? "#38bdf8" : "#ffffff"}
           strokeOpacity={0.9}
           strokeWidth={1.8}
           strokeLinejoin="round"
@@ -147,3 +183,4 @@ function PlantNodeImpl({ plant, x, y, metricMode, selected, onHover, onLeave, on
 }
 
 export default memo(PlantNodeImpl);
+

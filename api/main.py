@@ -103,6 +103,12 @@ def plant_feature(row: dict[str, Any]) -> dict[str, Any]:
         "lmp_market": row["lmp_market"],
         "lmp_location": row["lmp_location"],
         "lmp_location_type": row["lmp_location_type"],
+        "commission_year": row["commission_year"],
+        "license_expiration_year": row["license_expiration_year"],
+        "overnight_capex_usd_kw": row["overnight_capex_usd_kw"],
+        "fixed_om_usd_kw_yr": row["fixed_om_usd_kw_yr"],
+        "variable_om_usd_mwh": row["variable_om_usd_mwh"],
+        "fuel_cost_usd_mwh": row["fuel_cost_usd_mwh"],
     }
     return {
         "type": "Feature",
@@ -146,6 +152,12 @@ def list_plants() -> dict[str, Any]:
                     p.longitude,
                     p.total_mw_capacity,
                     p.state,
+                    p.commission_year,
+                    p.license_expiration_year,
+                    p.overnight_capex_usd_kw,
+                    p.fixed_om_usd_kw_yr,
+                    p.variable_om_usd_mwh,
+                    p.fuel_cost_usd_mwh,
                     c.stock_ticker,
                     c.parent_company_name,
                     latest_output.realtime_output_mw AS current_mw_output,
@@ -200,11 +212,20 @@ def list_plants() -> dict[str, Any]:
 def plant_ownership(plant_id: int) -> dict[str, Any]:
     with db_connection() as conn:
         with conn.cursor() as cur:
+            # 1. Fetch plant and its primary fallback company details
             cur.execute(
                 """
                 SELECT
                     p.id AS plant_id,
                     p.plant_name,
+                    p.operator_name,
+                    p.nrc_owner_operator,
+                    p.commission_year,
+                    p.license_expiration_year,
+                    p.overnight_capex_usd_kw,
+                    p.fixed_om_usd_kw_yr,
+                    p.variable_om_usd_mwh,
+                    p.fuel_cost_usd_mwh,
                     c.id AS company_id,
                     c.stock_ticker,
                     c.parent_company_name
@@ -219,40 +240,135 @@ def plant_ownership(plant_id: int) -> dict[str, Any]:
             if plant is None:
                 raise HTTPException(status_code=404, detail="Plant not found.")
 
+            # 2. Check if there are joint equity stakes
             cur.execute(
                 """
                 SELECT
-                    id,
-                    institutional_investor_name,
-                    ownership_percentage,
-                    reported_at
-                FROM shareholders
-                WHERE company_id = %s
+                    pes.id AS stake_id,
+                    pes.owner_name,
+                    pes.equity_percentage,
+                    pes.parent_company_id,
+                    c.stock_ticker,
+                    c.parent_company_name
+                FROM plant_equity_stakes pes
+                LEFT JOIN companies c
+                    ON c.id = pes.parent_company_id
+                WHERE pes.plant_id = %s
                 ORDER BY
-                    ownership_percentage DESC,
-                    institutional_investor_name ASC
+                    pes.equity_percentage DESC,
+                    pes.owner_name ASC
                 """,
-                (plant["company_id"],),
+                (plant_id,),
             )
-            shareholders = cur.fetchall()
+            stakes_rows = cur.fetchall()
+
+            ownership_stakes = []
+            is_joint_ownership = len(stakes_rows) > 0
+
+            if is_joint_ownership:
+                for row in stakes_rows:
+                    stake_shareholders = []
+                    if row["parent_company_id"] is not None:
+                        cur.execute(
+                            """
+                            SELECT
+                                id,
+                                institutional_investor_name,
+                                ownership_percentage,
+                                reported_at
+                            FROM shareholders
+                            WHERE company_id = %s
+                            ORDER BY
+                                ownership_percentage DESC,
+                                institutional_investor_name ASC
+                            """,
+                            (row["parent_company_id"],),
+                        )
+                        sh_rows = cur.fetchall()
+                        stake_shareholders = [
+                            {
+                                "id": sh["id"],
+                                "institutional_investor_name": sh["institutional_investor_name"],
+                                "ownership_percentage": json_value(sh["ownership_percentage"]),
+                                "reported_at": json_value(sh["reported_at"]),
+                            }
+                            for sh in sh_rows
+                        ]
+
+                    ownership_stakes.append({
+                        "id": row["stake_id"],
+                        "owner_name": row["owner_name"],
+                        "equity_percentage": json_value(row["equity_percentage"]),
+                        "parent_company": {
+                            "id": row["parent_company_id"],
+                            "stock_ticker": row["stock_ticker"],
+                            "parent_company_name": row["parent_company_name"],
+                        } if row["parent_company_id"] is not None else None,
+                        "shareholders": stake_shareholders
+                    })
+            else:
+                # Single ownership fallback
+                cur.execute(
+                    """
+                    SELECT
+                        id,
+                        institutional_investor_name,
+                        ownership_percentage,
+                        reported_at
+                    FROM shareholders
+                    WHERE company_id = %s
+                    ORDER BY
+                        ownership_percentage DESC,
+                        institutional_investor_name ASC
+                    """,
+                    (plant["company_id"],),
+                )
+                sh_rows = cur.fetchall()
+                fallback_shareholders = [
+                    {
+                        "id": sh["id"],
+                        "institutional_investor_name": sh["institutional_investor_name"],
+                        "ownership_percentage": json_value(sh["ownership_percentage"]),
+                        "reported_at": json_value(sh["reported_at"]),
+                    }
+                    for sh in sh_rows
+                ]
+
+                owner_name = plant["operator_name"] or plant["nrc_owner_operator"] or plant["parent_company_name"]
+
+                ownership_stakes.append({
+                    "id": None,
+                    "owner_name": owner_name,
+                    "equity_percentage": 100.00,
+                    "parent_company": {
+                        "id": plant["company_id"],
+                        "stock_ticker": plant["stock_ticker"],
+                        "parent_company_name": plant["parent_company_name"],
+                    },
+                    "shareholders": fallback_shareholders
+                })
+
+            primary_stake = ownership_stakes[0]
+            legacy_parent = primary_stake["parent_company"] or {
+                "id": plant["company_id"],
+                "stock_ticker": plant["stock_ticker"],
+                "parent_company_name": plant["parent_company_name"],
+            }
+            legacy_shareholders = primary_stake["shareholders"]
 
     return {
         "plant": {
             "id": plant["plant_id"],
             "plant_name": plant["plant_name"],
+            "commission_year": plant["commission_year"],
+            "license_expiration_year": plant["license_expiration_year"],
+            "overnight_capex_usd_kw": json_value(plant["overnight_capex_usd_kw"]),
+            "fixed_om_usd_kw_yr": json_value(plant["fixed_om_usd_kw_yr"]),
+            "variable_om_usd_mwh": json_value(plant["variable_om_usd_mwh"]),
+            "fuel_cost_usd_mwh": json_value(plant["fuel_cost_usd_mwh"]),
         },
-        "parent_company": {
-            "id": plant["company_id"],
-            "stock_ticker": plant["stock_ticker"],
-            "parent_company_name": plant["parent_company_name"],
-        },
-        "shareholders": [
-            {
-                "id": row["id"],
-                "institutional_investor_name": row["institutional_investor_name"],
-                "ownership_percentage": json_value(row["ownership_percentage"]),
-                "reported_at": json_value(row["reported_at"]),
-            }
-            for row in shareholders
-        ],
+        "is_joint_ownership": is_joint_ownership,
+        "ownership_stakes": ownership_stakes,
+        "parent_company": legacy_parent,
+        "shareholders": legacy_shareholders,
     }
