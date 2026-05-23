@@ -321,6 +321,29 @@ export default function NuclearMap({ plants, selectedPlant, onSelect, metricMode
         )}
       </svg>
 
+      <div className="smr-legend" aria-label="SMR layer legend">
+        <span className="smr-legend-title">SMR Sites</span>
+        <span className="smr-legend-item">
+          <svg width="14" height="14" viewBox="-7 -7 14 14" aria-hidden="true">
+            <circle r="5" fill="none" stroke="#94a3b8" strokeWidth="1.4" strokeDasharray="3 3" />
+          </svg>
+          Announced
+        </span>
+        <span className="smr-legend-item">
+          <svg width="14" height="14" viewBox="-7 -7 14 14" aria-hidden="true">
+            <circle r="5" fill="none" stroke="#60a5fa" strokeWidth="1.4" />
+          </svg>
+          NRC-Engaged
+        </span>
+        <span className="smr-legend-item">
+          <svg width="14" height="14" viewBox="-7 -7 14 14" aria-hidden="true">
+            <circle r="5" fill="none" stroke="#34d399" strokeWidth="1.4" />
+            <circle r="1.7" fill="#34d399" />
+          </svg>
+          Under Construction
+        </span>
+      </div>
+
       <RegionChips
         regions={regionMeta}
         activeCode={activeRegion}
