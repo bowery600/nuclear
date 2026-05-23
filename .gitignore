@@ -21,7 +21,10 @@ frontend/.env.local
 # scratch / one-off
 body.json
 body.txt
+o.json
+p.json
 resp.json
 resp.html
 resp2.html
 response.txt
+root.html

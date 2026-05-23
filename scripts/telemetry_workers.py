@@ -399,7 +399,7 @@ def import_gridstatus() -> Any:
         import gridstatus
     except ImportError as exc:
         raise SystemExit(
-            "gridstatus is required for LMP telemetry. Run `pip install -r requirements.txt`."
+            "gridstatus is required for LMP telemetry. Run `pip install -r requirements-dev.txt`."
         ) from exc
     return gridstatus
 
@@ -610,7 +610,7 @@ def run_scheduler(timezone_name: str, run_on_start: bool) -> None:
     except ImportError as exc:
         raise SystemExit(
             "APScheduler is required for the telemetry scheduler. "
-            "Run `pip install -r requirements.txt`."
+            "Run `pip install -r requirements-dev.txt`."
         ) from exc
 
     scheduler_timezone = ZoneInfo(timezone_name)

@@ -23,8 +23,11 @@ Create and activate a virtual environment:
 py -3.13 -m venv .venv
 .\.venv\Scripts\Activate.ps1
 python -m pip install --upgrade pip
-pip install -r requirements.txt
+pip install -r requirements-dev.txt
 ```
+
+`requirements.txt` is intentionally slim for the Vercel API runtime. Use `requirements-dev.txt`
+for full local setup, seed scripts, telemetry workers, or the scheduler.
 
 Python 3.13 is recommended on Windows for the Phase 4 `gridstatus` dependency. Python 3.14 currently resolves to a `gridstatus`/`lxml` combination that may require compiling `lxml` locally.
 
@@ -98,7 +101,7 @@ Phase 4 adds `scripts/telemetry_workers.py` for automated plant telemetry update
 Apply the new schema migration after updating dependencies:
 
 ```powershell
-pip install -r requirements.txt
+pip install -r requirements-dev.txt
 python scripts/init_db.py
 ```
 
@@ -161,7 +164,7 @@ Endpoints:
 - `GET /api/plants` returns a GeoJSON `FeatureCollection` of all plants. Each point uses `[longitude, latitude]` coordinates and includes current MW output, current power cost in USD/MWh, capacity percentage, parent company, ticker, and latest telemetry timestamps.
 - `GET /api/plants/{id}/ownership` returns the selected plant, parent company details, and shareholders sorted by ownership percentage descending.
 
-The API reads `DATABASE_URL` from `.env`. For map frontend development, CORS defaults to `localhost` and `127.0.0.1` ports `3000` and `5173`; set `API_CORS_ORIGINS` to a comma-separated list to override it. In production on Vercel, the frontend uses same-origin `/api` requests unless you set `VITE_API_BASE_URL` to a different backend URL.
+The API reads `DATABASE_URL` from `.env`. For local map development, start the API on port `8000` and Vite on port `5173`; the Vite dev server proxies same-origin `/api` requests to `http://127.0.0.1:8000`. CORS defaults to `localhost` and `127.0.0.1` ports `3000` and `5173`; set `API_CORS_ORIGINS` to a comma-separated list to override it. In production on Vercel, the frontend uses same-origin `/api` requests unless you set `VITE_API_BASE_URL` to a different backend URL.
 
 ## Interactive Map Frontend
 
@@ -172,6 +175,10 @@ cd frontend
 npm install
 npm run dev
 ```
+
+With the API running on `http://127.0.0.1:8000`, the frontend calls `/api/plants`
+through the Vite proxy. Leave `VITE_API_BASE_URL` unset for same-origin local and
+Vercel deployments; set it only when deliberately pointing at a separate backend.
 
 The map loads `GET /api/plants` as GeoJSON and draws:
 
@@ -201,7 +208,7 @@ Supabase setup:
 1. Run the SQL files in [sql/](sql/) in order, or apply them through the Supabase SQL editor.
 1. Use the Supabase connection string as `DATABASE_URL` in Vercel and in any local `.env` file.
 
-The root [vercel.json](vercel.json) builds the Vite frontend from `frontend/` and deploys the Python API from `api/main.py`.
+The root [vercel.json](vercel.json) sets the project framework to `null`, builds the Vite frontend from `frontend/`, serves `frontend/dist`, and deploys the Python API from `api/main.py`. `requirements.txt` contains only the Vercel API runtime dependencies; GitHub Actions and local workers install `requirements-dev.txt`.
 
 Exact pricing-node overrides can be supplied as JSON in `TELEMETRY_LMP_NODE_OVERRIDES`, either directly or as a path to a JSON file:
 

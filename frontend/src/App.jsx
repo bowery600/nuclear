@@ -14,8 +14,7 @@ import {
 } from "lucide-react";
 import NuclearMap from "./map/NuclearMap";
 
-const API_BASE_URL =
-  import.meta.env.VITE_API_BASE_URL || (import.meta.env.DEV ? "http://localhost:8000" : "");
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "";
 
 const emptyCollection = {
   type: "FeatureCollection",
