@@ -4214,3 +4214,40 @@ a:hover { text-decoration: underline; }
 .pipeline-card-row { display: flex; justify-content: space-between; font-size: 10.5px; padding: 2px 0; }
 .pipeline-card-row span { color: rgba(226, 232, 240, 0.5); }
 .pipeline-card-row strong { color: rgba(226, 232, 240, 0.95); font-weight: 500; }
+
+/* === Utility chip cluster === */
+.chip-cluster {
+  position: fixed;
+  top: 14px;
+  right: 18px;
+  display: flex;
+  gap: 6px;
+  z-index: 60;
+}
+.util-chip {
+  background: rgba(15, 23, 42, 0.85);
+  border: 1px solid rgba(34, 211, 238, 0.25);
+  color: rgba(226, 232, 240, 0.9);
+  border-radius: 4px;
+  font-family: ui-monospace, SFMono-Regular, monospace;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  padding: 6px 10px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  transition: border-color 120ms, color 120ms;
+}
+.util-chip:hover { border-color: rgba(34, 211, 238, 0.6); color: #22d3ee; }
+.chip-kbd {
+  background: rgba(34, 211, 238, 0.12);
+  border: 1px solid rgba(34, 211, 238, 0.3);
+  color: #22d3ee;
+  border-radius: 3px;
+  font-size: 9px;
+  padding: 1px 4px;
+  margin-left: 2px;
+  letter-spacing: 0.05em;
+}

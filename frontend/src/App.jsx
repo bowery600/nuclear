@@ -2,10 +2,12 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Activity,
   AlertCircle,
+  Archive,
   Building2,
   Car,
   Clock,
   Coins,
+  Command,
   DollarSign,
   Factory,
   GitBranch,
@@ -13,6 +15,7 @@ import {
   Leaf,
   Loader2,
   MapPin,
+  Newspaper,
   Percent,
   Sliders,
   Trees,
@@ -231,7 +234,7 @@ function App() {
   const [showTree, setShowTree] = useState(false);
   const [replacementFuel, setReplacementFuel] = useState("grid");
   const [timelineYear, setTimelineYear] = useState(2026);
-  const [showHistory, setShowHistory] = useState(false);
+  const [overlay, setOverlay] = useState(null); // null | "news" | "cmd" | "archives"
   const [activeView, setActiveView] = useState("map");
   const [highlightTicker, setHighlightTicker] = useState(null);
 
@@ -481,7 +484,6 @@ function App() {
           visibleCount={filteredPlants.features.length}
           status={status}
           activeYear={timelineYear}
-          onShowHistory={() => setShowHistory(true)}
           activeView={activeView}
           onChangeView={setActiveView}
         />
@@ -535,9 +537,19 @@ function App() {
         />
       )}
 
-      {showHistory && (
-        <NuclearHistory onClose={() => setShowHistory(false)} />
-      )}
+      <div className="chip-cluster" role="toolbar" aria-label="Utility actions">
+        <button className="util-chip" onClick={() => setOverlay(overlay === "news" ? null : "news")} title="News feed">
+          <Newspaper size={14} /><span>NEWS</span>
+        </button>
+        <button className="util-chip" onClick={() => setOverlay(overlay === "cmd" ? null : "cmd")} title="Command palette (⌘K)">
+          <Command size={14} /><span>CMD</span><kbd className="chip-kbd">⌘K</kbd>
+        </button>
+        <button className="util-chip" onClick={() => setOverlay(overlay === "archives" ? null : "archives")} title="Archives">
+          <Archive size={14} /><span>ARCH</span>
+        </button>
+      </div>
+
+      {overlay === "archives" && <NuclearHistory onClose={() => setOverlay(null)} />}
     </main>
   );
 }

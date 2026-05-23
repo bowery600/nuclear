@@ -1,4 +1,4 @@
-import { Search, Loader2, MapPin, Factory, BookOpen } from "lucide-react";
+import { Search, Loader2, MapPin, Factory } from "lucide-react";
 
 const TABS = [
   { id: "map",      label: "MAP" },
@@ -8,7 +8,7 @@ const TABS = [
 ];
 
 export default function TopRail({
-  query, setQuery, visibleCount, status, activeYear, onShowHistory,
+  query, setQuery, visibleCount, status, activeYear,
   activeView, onChangeView
 }) {
   return (
@@ -58,15 +58,6 @@ export default function TopRail({
         {status === "loading" ? <Loader2 size={15} className="spin" /> : <MapPin size={15} />}
         {visibleCount} sites
       </div>
-
-      <button
-        className="top-rail-archives-btn"
-        onClick={onShowHistory}
-        title="Open Nuclear History Archives"
-      >
-        <BookOpen size={15} />
-        <span>Archives</span>
-      </button>
     </header>
   );
 }
