@@ -29,6 +29,7 @@ import TopRail from "./map/TopRail";
 import { getPlantStatusDetails } from "./map/colors";
 import NuclearHistory from "./map/NuclearHistory";
 import Odometer from "./map/Odometer";
+import MarketsView from "./views/MarketsView";
 
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "";
@@ -230,6 +231,7 @@ function App() {
   const [timelineYear, setTimelineYear] = useState(2026);
   const [showHistory, setShowHistory] = useState(false);
   const [activeView, setActiveView] = useState("map");
+  const [highlightTicker, setHighlightTicker] = useState(null);
 
   // States for 3D reactor overlays and manual power factor overrides
   const [plantOverrides, setPlantOverrides] = useState({});
@@ -454,7 +456,13 @@ function App() {
           />
         )}
 
-        {activeView === "markets"  && <div className="view-placeholder">MARKETS view — coming soon</div>}
+        {activeView === "markets" && (
+          <MarketsView
+            plants={animatedPlants.features}
+            tick={fluctuationFactor}
+            onHighlightTicker={setHighlightTicker}
+          />
+        )}
         {activeView === "outages"  && <div className="view-placeholder">OUTAGES view — coming soon</div>}
         {activeView === "pipeline" && <div className="view-placeholder">PIPELINE view — coming soon</div>}
 

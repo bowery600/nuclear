@@ -4064,3 +4064,68 @@ a:hover { text-decoration: underline; }
   font-size: 14px;
   letter-spacing: 0.1em;
 }
+
+/* === MARKETS view === */
+.markets-view {
+  position: absolute;
+  inset: 80px 24px 60px 24px;
+  display: grid;
+  grid-template-columns: 320px 1fr;
+  gap: 20px;
+  color: #e2e8f0;
+  font-family: ui-monospace, SFMono-Regular, monospace;
+  overflow: hidden;
+}
+.markets-section-title {
+  font-size: 11px;
+  letter-spacing: 0.18em;
+  color: rgba(226, 232, 240, 0.55);
+  margin: 0 0 12px 0;
+  text-transform: uppercase;
+}
+.markets-fuel-col { display: flex; flex-direction: column; gap: 12px; }
+.fuel-card {
+  background: rgba(15, 23, 42, 0.6);
+  border: 1px solid rgba(34, 211, 238, 0.15);
+  border-radius: 8px;
+  padding: 12px 14px;
+}
+.fuel-card-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
+.fuel-label { font-size: 11px; letter-spacing: 0.1em; color: rgba(226, 232, 240, 0.75); }
+.fuel-delta { font-size: 11px; display: flex; align-items: center; gap: 3px; }
+.fuel-delta.up { color: #22d3ee; }
+.fuel-delta.down { color: #f87171; }
+.fuel-card-price { display: flex; align-items: baseline; gap: 6px; margin-bottom: 8px; }
+.fuel-price { font-size: 22px; font-weight: 600; }
+.fuel-unit { font-size: 11px; color: rgba(226, 232, 240, 0.5); }
+
+.markets-equities-col { display: flex; flex-direction: column; min-height: 0; }
+.equities-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+  background: rgba(15, 23, 42, 0.4);
+  border: 1px solid rgba(34, 211, 238, 0.12);
+  border-radius: 8px;
+  overflow: hidden;
+}
+.equities-table thead { background: rgba(15, 23, 42, 0.85); }
+.equities-table th {
+  text-align: left;
+  padding: 8px 10px;
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  color: rgba(226, 232, 240, 0.6);
+  text-transform: uppercase;
+  font-weight: 600;
+}
+.equities-table th.num, .equities-table td.num { text-align: right; }
+.equities-table td { padding: 8px 10px; border-top: 1px solid rgba(255, 255, 255, 0.04); }
+.equities-table tbody tr { cursor: pointer; transition: background 80ms ease; }
+.equities-table tbody tr:hover { background: rgba(34, 211, 238, 0.06); }
+.equities-table .ticker-cell { font-weight: 700; color: #22d3ee; letter-spacing: 0.05em; }
+.equities-table .name-cell { color: rgba(226, 232, 240, 0.85); }
+.equities-table .up { color: #22d3ee; }
+.equities-table .down { color: #f87171; }
+.markets-footnote { font-size: 10.5px; color: rgba(226, 232, 240, 0.4); margin: 8px 4px 0; letter-spacing: 0.04em; }
+.sparkline { display: block; }
