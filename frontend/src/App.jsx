@@ -31,6 +31,7 @@ import NuclearHistory from "./map/NuclearHistory";
 import Odometer from "./map/Odometer";
 import MarketsView from "./views/MarketsView";
 import OutagesView from "./views/OutagesView";
+import PipelineView from "./views/PipelineView";
 
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "";
@@ -472,7 +473,7 @@ function App() {
             onSwitchView={setActiveView}
           />
         )}
-        {activeView === "pipeline" && <div className="view-placeholder">PIPELINE view — coming soon</div>}
+        {activeView === "pipeline" && <PipelineView />}
 
         <TopRail
           query={query}
