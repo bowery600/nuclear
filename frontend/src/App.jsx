@@ -77,8 +77,20 @@ function formatDateTime(value) {
   }).format(date);
 }
 
+const NON_PUBLIC_TICKERS = {
+  ENW: "Energy Northwest is a joint operating agency and not publicly traded.",
+  HOLTEC: "Holtec International is a privately held energy technology company.",
+  NPPD: "Nebraska Public Power District is a public power corporation and not publicly traded.",
+  STP: "STP Nuclear Operating Company is a private joint venture and not publicly traded.",
+  TVA: "Tennessee Valley Authority is a federally owned corporation and not publicly traded.",
+  WCNOC: "Wolf Creek Nuclear Operating Corporation is a private operating company and not publicly traded."
+};
+
 function displayTicker(ticker) {
-  return ticker && ticker !== "PRIVATE" ? ticker : "Private";
+  if (!ticker || ticker === "PRIVATE" || NON_PUBLIC_TICKERS[ticker.toUpperCase()]) {
+    return "Private / Non-public";
+  }
+  return ticker;
 }
 
 function plantName(feature) {
@@ -460,7 +472,12 @@ function OwnershipPanel({ plant, ownership, status, error, onClose }) {
             )}
 
             {status === "ready" && shareholders.length === 0 && (
-              <div className="empty-state">No shareholder rows available for this owner.</div>
+              <div className="empty-state">
+                <span>
+                  {NON_PUBLIC_TICKERS[props.stock_ticker?.toUpperCase()] ||
+                    "No shareholder rows available for this owner."}
+                </span>
+              </div>
             )}
 
             <div className="shareholder-grid">
