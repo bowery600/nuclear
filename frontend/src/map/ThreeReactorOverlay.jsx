@@ -3,7 +3,6 @@ import * as THREE from "three";
 import { Sliders, Activity, Info, X, Zap } from "lucide-react";
 
 export default function ThreeReactorOverlay({ plant, onClose, onUpdatePlantMetrics }) {
-  const containerRef = useRef(null);
   const mountRef = useRef(null);
   
   const props = plant?.properties || {};
@@ -12,6 +11,8 @@ export default function ThreeReactorOverlay({ plant, onClose, onUpdatePlantMetri
   // App-linked simulation states
   const [controlRodDepth, setControlRodDepth] = useState(props.capacity_percentage || 90);
   const [selectedComponent, setSelectedComponent] = useState("rpv");
+  const controlRodDepthRef = useRef(controlRodDepth);
+  const selectedComponentRef = useRef(selectedComponent);
 
   // Multi-state component telemetry
   const telemetry = {
@@ -51,6 +52,14 @@ export default function ThreeReactorOverlay({ plant, onClose, onUpdatePlantMetri
       desc: "A massive, steel-lined concrete dome designed to contain radiation and protect the reactor from extreme external impacts."
     }
   };
+
+  useEffect(() => {
+    controlRodDepthRef.current = controlRodDepth;
+  }, [controlRodDepth]);
+
+  useEffect(() => {
+    selectedComponentRef.current = selectedComponent;
+  }, [selectedComponent]);
 
   // Slider change handler - Syncs physical rod height in 3D and metrics back to the parent state
   const handleRodSliderChange = (e) => {
@@ -360,7 +369,31 @@ export default function ThreeReactorOverlay({ plant, onClose, onUpdatePlantMetri
     canvasDom.addEventListener("touchmove", handleTouchMove, { passive: true });
     canvasDom.addEventListener("touchend", handleMouseUp);
 
-    // 6. Animation Loop
+    // 7. Component Selection Highlights
+    const highlightTarget = () => {
+      // Return standard colors
+      glassMaterial.color.setHex(0x00d4ff);
+      glassMaterial.opacity = 0.12;
+      metalMaterial.color.setHex(0x4b5563);
+      pipeMaterialRed.color.setHex(0xef4444);
+      pipeMaterialBlue.color.setHex(0x3b82f6);
+
+      // Highlight selected structure in wireframe/emissive glow
+      const activeComponent = selectedComponentRef.current;
+      if (activeComponent === "dome") {
+        glassMaterial.color.setHex(0x00ff8c); // emerald highlight
+        glassMaterial.opacity = 0.3;
+      } else if (activeComponent === "rpv") {
+        metalMaterial.color.setHex(0x60a5fa); // glowing blue
+      } else if (activeComponent === "rods") {
+        // Glowing rods
+      } else if (activeComponent === "loop") {
+        pipeMaterialRed.color.setHex(0xfc8181);
+        pipeMaterialBlue.color.setHex(0x93c5fd);
+      }
+    };
+
+    // 8. Animation Loop
     let animationId;
     let clock = new THREE.Clock();
 
@@ -368,10 +401,11 @@ export default function ThreeReactorOverlay({ plant, onClose, onUpdatePlantMetri
       animationId = requestAnimationFrame(animate);
       const delta = clock.getDelta();
       const elapsed = clock.getElapsedTime();
+      const currentRodDepth = controlRodDepthRef.current;
 
-      // 6.1. Move particles inside pipes
+      // 8.1. Move particles inside pipes
       // speed scales with control rod depth (thermal activity)
-      const flowSpeed = 0.3 + (controlRodDepth / 100) * 0.85;
+      const flowSpeed = 0.3 + (currentRodDepth / 100) * 0.85;
 
       particles.forEach((p) => {
         const ud = p.userData;
@@ -387,8 +421,8 @@ export default function ThreeReactorOverlay({ plant, onClose, onUpdatePlantMetri
         p.position.y = ud.y + Math.sin(elapsed * 5.0 + ud.progress * 10) * 0.04;
       });
 
-      // 6.2. Animate Cherenkov radiation core pulse
-      const activeCoreIntensity = controlRodDepth / 100;
+      // 8.2. Animate Cherenkov radiation core pulse
+      const activeCoreIntensity = currentRodDepth / 100;
       if (activeCoreIntensity > 0.05) {
         coreMaterial.color.setHex(0x00f0ff);
         coreMaterial.opacity = 0.35 + Math.sin(elapsed * 4.5) * 0.15 * activeCoreIntensity;
@@ -400,44 +434,21 @@ export default function ThreeReactorOverlay({ plant, onClose, onUpdatePlantMetri
         coreLight.intensity = 0.1;
       }
 
-      // 6.3. Animate control rods position based on state
+      // 8.3. Animate control rods position based on state
       // rodGroup position y scales: 3.4 (withdrawn, 100% capacity) down to 2.1 (inserted, 0% capacity)
-      const targetY = 2.1 + (controlRodDepth / 100) * 1.3;
+      const targetY = 2.1 + (currentRodDepth / 100) * 1.3;
       // Smooth interpolation for nice physical responsiveness
       rodGroup.position.y = THREE.MathUtils.lerp(rodGroup.position.y, targetY, 0.12);
 
       // Rotate RPV core slightly just for high-tech micro-movement
       rpvGroup.rotation.y = elapsed * 0.08;
+      highlightTarget();
 
       renderer.render(scene, camera);
     };
     animate();
 
-    // 7. Component Selection Highlights
-    const highlightTarget = () => {
-      // Return standard colors
-      glassMaterial.color.setHex(0x00d4ff);
-      glassMaterial.opacity = 0.12;
-      metalMaterial.color.setHex(0x4b5563);
-      pipeMaterialRed.color.setHex(0xef4444);
-      pipeMaterialBlue.color.setHex(0x3b82f6);
-
-      // Highlight selected structure in wireframe/emissive glow
-      if (selectedComponent === "dome") {
-        glassMaterial.color.setHex(0x00ff8c); // emerald highlight
-        glassMaterial.opacity = 0.3;
-      } else if (selectedComponent === "rpv") {
-        metalMaterial.color.setHex(0x60a5fa); // glowing blue
-      } else if (selectedComponent === "rods") {
-        // Glowing rods
-      } else if (selectedComponent === "loop") {
-        pipeMaterialRed.color.setHex(0xfc8181);
-        pipeMaterialBlue.color.setHex(0x93c5fd);
-      }
-    };
-    highlightTarget();
-
-    // 8. Handle Resize
+    // 9. Handle Resize
     const handleResize = () => {
       if (!mountRef.current) return;
       const w = mountRef.current.clientWidth;
@@ -463,7 +474,7 @@ export default function ThreeReactorOverlay({ plant, onClose, onUpdatePlantMetri
       }
       scene.clear();
     };
-  }, [mountRef, selectedComponent, controlRodDepth]);
+  }, []);
 
   const activeTelemetry = telemetry[selectedComponent];
 

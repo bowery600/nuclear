@@ -1,5 +1,4 @@
 import { useEffect, useRef, useState } from "react";
-import Odometer from "./Odometer";
 import { EQUITIES } from "../data/equitiesSeed";
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "";
@@ -78,15 +77,9 @@ export default function TickerRail() {
           return (
             <div className="ticker-item" key={`${q.symbol}-${idx}`}>
               <span className="ticker-name">{q.symbol}</span>
-              <span className="ticker-val">
-                <Odometer value={"$" + formatPrice(q.price)} theme="white" inline />
-              </span>
-              <span className={`ticker-delta ${dir}`} style={{ display: 'inline-flex', alignItems: 'center' }}>
-                <Odometer
-                  value={`${formatChange(q.change)} (${formatPct(q.change_percent)})`}
-                  theme={dir === "up" ? "green" : dir === "down" ? "red" : "white"}
-                  inline
-                />
+              <span className="ticker-val">${formatPrice(q.price)}</span>
+              <span className={`ticker-delta ${dir}`}>
+                {formatChange(q.change)} ({formatPct(q.change_percent)})
               </span>
             </div>
           );

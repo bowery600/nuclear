@@ -23,6 +23,9 @@ export default function TimelineSlider({ activeYear, onChangeYear }) {
     );
   }, [activeYear]);
 
+  const eraBadgeTitle =
+    activeEra.title === "The SMR Era & Data Center Power" ? "The SMR Era" : activeEra.title;
+
   // Handle auto-playing year increments
   useEffect(() => {
     if (isPlaying) {
@@ -99,14 +102,14 @@ export default function TimelineSlider({ activeYear, onChangeYear }) {
         <div className="timeline-title-group">
           <Clock size={16} className="text-cyan animate-pulse" />
           <h3>Historical Fleet Simulator</h3>
-          <span className="era-badge" data-category={activeEra.category}>
-            {activeEra.title}
+          <span className="era-badge" data-category={activeEra.category} title={activeEra.title}>
+            {eraBadgeTitle}
           </span>
         </div>
 
-        <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+        <div className="timeline-header-actions">
           <div className="timeline-stats-preview">
-            <span>Simulation Active Year:</span>
+            <span>Year:</span>
             <strong className="glowing-year">{activeYear === 2026 ? "2026 (Present)" : activeYear}</strong>
           </div>
 

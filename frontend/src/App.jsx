@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { lazy, Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import {
   Activity,
   AlertCircle,
@@ -24,23 +24,24 @@ import {
   Zap
 } from "lucide-react";
 import NuclearMap from "./map/NuclearMap";
-import StakeholderTree from "./map/StakeholderTree";
 import { getHistoricalPlantProperties } from "./data/historicalTimeline";
 import TimelineSlider from "./map/TimelineSlider";
 import TickerRail from "./map/TickerRail";
 import TopRail from "./map/TopRail";
 import { getPlantStatusDetails } from "./map/colors";
-import NuclearHistory from "./map/NuclearHistory";
 import Odometer from "./map/Odometer";
-import MarketsView from "./views/MarketsView";
-import OutagesView from "./views/OutagesView";
-import PipelineView from "./views/PipelineView";
-import NewsOverlay from "./overlays/NewsOverlay";
-import CommandPalette from "./overlays/CommandPalette";
 import { EQUITIES, plantsForEquity } from "./data/equitiesSeed";
 
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "";
+
+const StakeholderTree = lazy(() => import("./map/StakeholderTree"));
+const NuclearHistory = lazy(() => import("./map/NuclearHistory"));
+const MarketsView = lazy(() => import("./views/MarketsView"));
+const OutagesView = lazy(() => import("./views/OutagesView"));
+const PipelineView = lazy(() => import("./views/PipelineView"));
+const NewsOverlay = lazy(() => import("./overlays/NewsOverlay"));
+const CommandPalette = lazy(() => import("./overlays/CommandPalette"));
 
 const emptyCollection = {
   type: "FeatureCollection",
@@ -201,10 +202,10 @@ function RollingCounter({ currentOutput, fuel = "grid", inline = false }) {
   useEffect(() => {
     const interval = setInterval(() => {
       setCount((prev) => {
-        const increment = (currentOutput * offsetFactor * 0.1) / 3600;
+        const increment = (currentOutput * offsetFactor * 0.5) / 3600;
         return prev + increment;
       });
-    }, 100);
+    }, 500);
 
     return () => clearInterval(interval);
   }, [currentOutput, offsetFactor]);
@@ -546,22 +547,30 @@ function App() {
         )}
 
         {activeView === "markets" && (
-          <MarketsView
-            plants={animatedPlants.features}
-            tick={fluctuationFactor}
-            onHighlightTicker={setHighlightTicker}
-            highlightTicker={highlightTicker}
-          />
+          <Suspense fallback={null}>
+            <MarketsView
+              plants={animatedPlants.features}
+              tick={fluctuationFactor}
+              onHighlightTicker={setHighlightTicker}
+              highlightTicker={highlightTicker}
+            />
+          </Suspense>
         )}
         {activeView === "outages" && (
-          <OutagesView
-            plants={animatedPlants.features}
-            year={timelineYear}
-            onSelectPlant={selectPlant}
-            onSwitchView={setActiveView}
-          />
+          <Suspense fallback={null}>
+            <OutagesView
+              plants={animatedPlants.features}
+              year={timelineYear}
+              onSelectPlant={selectPlant}
+              onSwitchView={setActiveView}
+            />
+          </Suspense>
         )}
-        {activeView === "pipeline" && <PipelineView requestedVendor={pipelineVendorFilter} />}
+        {activeView === "pipeline" && (
+          <Suspense fallback={null}>
+            <PipelineView requestedVendor={pipelineVendorFilter} />
+          </Suspense>
+        )}
 
         <TopRail
           query={query}
@@ -615,11 +624,13 @@ function App() {
       )}
 
       {activeView === "map" && showTree && activeSelectedPlant && ownership && (
-        <StakeholderTree
-          plant={activeSelectedPlant}
-          ownership={ownership}
-          onClose={() => setShowTree(false)}
-        />
+        <Suspense fallback={null}>
+          <StakeholderTree
+            plant={activeSelectedPlant}
+            ownership={ownership}
+            onClose={() => setShowTree(false)}
+          />
+        </Suspense>
       )}
 
       <div className="chip-cluster" role="toolbar" aria-label="Utility actions">
@@ -634,23 +645,31 @@ function App() {
         </button>
       </div>
 
-      {overlay === "archives" && <NuclearHistory onClose={() => setOverlay(null)} />}
+      {overlay === "archives" && (
+        <Suspense fallback={null}>
+          <NuclearHistory onClose={() => setOverlay(null)} />
+        </Suspense>
+      )}
       {overlay === "news" && (
-        <NewsOverlay
-          onClose={() => setOverlay(null)}
-          onTicker={(ticker) => {
-            setHighlightTicker(ticker);
-            setActiveView("markets");
-            setOverlay(null);
-          }}
-        />
+        <Suspense fallback={null}>
+          <NewsOverlay
+            onClose={() => setOverlay(null)}
+            onTicker={(ticker) => {
+              setHighlightTicker(ticker);
+              setActiveView("markets");
+              setOverlay(null);
+            }}
+          />
+        </Suspense>
       )}
       {overlay === "cmd" && (
-        <CommandPalette
-          plantFeatures={animatedPlants.features}
-          onClose={() => setOverlay(null)}
-          onDispatch={dispatchCommand}
-        />
+        <Suspense fallback={null}>
+          <CommandPalette
+            plantFeatures={animatedPlants.features}
+            onClose={() => setOverlay(null)}
+            onDispatch={dispatchCommand}
+          />
+        </Suspense>
       )}
     </main>
   );

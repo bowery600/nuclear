@@ -38,6 +38,67 @@ export default function ThermalCanvas({ width, height, transform, projectedPlant
       return "river"; // Default to river
     };
 
+    const drawLabel = (text, x, y, accent = "rgba(165, 243, 252, 0.95)") => {
+      ctx.save();
+      ctx.font = `${Math.max(9, Math.min(12, 10 * transform.k))}px ui-monospace, SFMono-Regular, Consolas, monospace`;
+      ctx.textBaseline = "middle";
+      ctx.letterSpacing = "0.4px";
+      const paddingX = 6 * transform.k;
+      const widthText = ctx.measureText(text).width;
+      const boxW = widthText + paddingX * 2;
+      const boxH = 18 * transform.k;
+      const boxX = x - boxW / 2;
+      const boxY = y - boxH / 2;
+      const radius = Math.max(3, 4 * transform.k);
+
+      ctx.fillStyle = "rgba(8, 13, 20, 0.86)";
+      ctx.strokeStyle = "rgba(148, 163, 184, 0.35)";
+      ctx.lineWidth = Math.max(0.8, 1 * transform.k);
+      ctx.beginPath();
+      if (typeof ctx.roundRect === "function") {
+        ctx.roundRect(boxX, boxY, boxW, boxH, radius);
+      } else {
+        ctx.rect(boxX, boxY, boxW, boxH);
+      }
+      ctx.fill();
+      ctx.stroke();
+
+      ctx.fillStyle = accent;
+      ctx.fillText(text, x - widthText / 2, y + 0.5 * transform.k);
+      ctx.restore();
+    };
+
+    const drawArrowHead = (x, y, angle, color, size) => {
+      ctx.save();
+      ctx.translate(x, y);
+      ctx.rotate(angle);
+      ctx.beginPath();
+      ctx.moveTo(0, 0);
+      ctx.lineTo(-size, -size * 0.42);
+      ctx.lineTo(-size, size * 0.42);
+      ctx.closePath();
+      ctx.fillStyle = color;
+      ctx.fill();
+      ctx.restore();
+    };
+
+    const strokeCurve = ({ startX, startY, cp1x, cp1y, cp2x, cp2y, endX, endY, color, widthLine, dash }) => {
+      ctx.save();
+      ctx.beginPath();
+      ctx.lineWidth = widthLine;
+      ctx.strokeStyle = color;
+      ctx.lineCap = "round";
+      ctx.lineJoin = "round";
+      if (dash) {
+        ctx.setLineDash(dash);
+        ctx.lineDashOffset = -time * 8 * transform.k;
+      }
+      ctx.moveTo(startX, startY);
+      ctx.bezierCurveTo(cp1x, cp1y, cp2x, cp2y, endX, endY);
+      ctx.stroke();
+      ctx.restore();
+    };
+
     const render = () => {
       ctx.clearRect(0, 0, width, height);
       time += 0.05;
@@ -72,46 +133,69 @@ export default function ThermalCanvas({ width, height, transform, projectedPlant
         const coolingType = getCoolingType(props.plant_name);
         const k = transform.k;
 
-        // 1. Draw Simulated Localized Cooling Water Sources
+        // 1. Draw simulated, labeled cooling-water intake and thermal discharge.
         ctx.save();
         if (coolingType === "river") {
-          // Draw a connected cooling-water path through the selected plant.
-          ctx.beginPath();
-          ctx.lineWidth = Math.max(2, 4 * k);
-          ctx.strokeStyle = "rgba(0, 212, 255, 0.28)";
-          ctx.shadowColor = "rgba(0, 212, 255, 0.4)";
-          ctx.shadowBlur = Math.max(2, 6 * k);
+          const riverStartX = screenX - 76 * k;
+          const riverStartY = screenY + 24 * k;
+          const riverEndX = screenX + 82 * k;
+          const riverEndY = screenY - 18 * k;
+          const riverCp1x = screenX - 34 * k;
+          const riverCp1y = screenY - 20 * k;
+          const riverCp2x = screenX + 32 * k;
+          const riverCp2y = screenY + 30 * k;
 
-          const startX = screenX - 64 * k;
-          const startY = screenY + 18 * k;
-          const cp1x = screenX - 28 * k;
-          const cp1y = screenY - 18 * k;
-          const cp2x = screenX - 12 * k;
-          const cp2y = screenY - 6 * k;
-          const plantInletX = screenX;
-          const plantInletY = screenY;
-          const cp3x = screenX + 12 * k;
-          const cp3y = screenY + 6 * k;
-          const cp4x = screenX + 32 * k;
-          const cp4y = screenY + 20 * k;
-          const endX = screenX + 70 * k;
-          const endY = screenY - 14 * k;
+          strokeCurve({
+            startX: riverStartX,
+            startY: riverStartY,
+            cp1x: riverCp1x,
+            cp1y: riverCp1y,
+            cp2x: riverCp2x,
+            cp2y: riverCp2y,
+            endX: riverEndX,
+            endY: riverEndY,
+            color: "rgba(14, 165, 233, 0.18)",
+            widthLine: Math.max(8, 14 * k)
+          });
 
-          ctx.moveTo(startX, startY);
-          ctx.bezierCurveTo(cp1x, cp1y, cp2x, cp2y, plantInletX, plantInletY);
-          ctx.bezierCurveTo(cp3x, cp3y, cp4x, cp4y, endX, endY);
-          ctx.stroke();
+          const intake = {
+            startX: screenX - 58 * k,
+            startY: screenY + 12 * k,
+            cp1x: screenX - 36 * k,
+            cp1y: screenY - 6 * k,
+            cp2x: screenX - 18 * k,
+            cp2y: screenY - 4 * k,
+            endX: screenX - 4 * k,
+            endY: screenY - 1 * k
+          };
+          const discharge = {
+            startX: screenX + 4 * k,
+            startY: screenY + 2 * k,
+            cp1x: screenX + 22 * k,
+            cp1y: screenY + 8 * k,
+            cp2x: screenX + 42 * k,
+            cp2y: screenY + 18 * k,
+            endX: screenX + 66 * k,
+            endY: screenY - 8 * k
+          };
 
-          // Flowing water dashes overlay representing active current
-          ctx.beginPath();
-          ctx.lineWidth = Math.max(1.2, 2.2 * k);
-          ctx.strokeStyle = "rgba(165, 243, 252, 0.65)";
-          ctx.setLineDash([12 * k, 35 * k]);
-          ctx.lineDashOffset = -time * 8 * k;
-          ctx.moveTo(startX, startY);
-          ctx.bezierCurveTo(cp1x, cp1y, cp2x, cp2y, plantInletX, plantInletY);
-          ctx.bezierCurveTo(cp3x, cp3y, cp4x, cp4y, endX, endY);
-          ctx.stroke();
+          strokeCurve({
+            ...intake,
+            color: "rgba(125, 211, 252, 0.7)",
+            widthLine: Math.max(1.5, 2.6 * k),
+            dash: [10 * k, 18 * k]
+          });
+          strokeCurve({
+            ...discharge,
+            color: "rgba(251, 146, 60, 0.72)",
+            widthLine: Math.max(1.5, 2.6 * k),
+            dash: [10 * k, 18 * k]
+          });
+          drawArrowHead(intake.endX, intake.endY, Math.atan2(intake.endY - intake.cp2y, intake.endX - intake.cp2x), "rgba(125, 211, 252, 0.9)", Math.max(5, 6 * k));
+          drawArrowHead(discharge.endX, discharge.endY, Math.atan2(discharge.endY - discharge.cp2y, discharge.endX - discharge.cp2x), "rgba(251, 146, 60, 0.95)", Math.max(5, 6 * k));
+
+          drawLabel("COOLING INTAKE", screenX - 56 * k, screenY - 18 * k, "rgba(186, 230, 253, 0.96)");
+          drawLabel("THERMAL DISCHARGE", screenX + 62 * k, screenY + 18 * k, "rgba(253, 186, 116, 0.96)");
         } else {
           // Draw a connected lake/reservoir interface centered on the selected plant.
           ctx.beginPath();
@@ -135,7 +219,47 @@ export default function ThermalCanvas({ width, height, transform, projectedPlant
           ctx.strokeStyle = `rgba(14, 165, 233, ${0.4 * (1 - (rippleRadius / lakeRadius))})`;
           ctx.lineWidth = Math.max(0.6, 1.2 * k);
           ctx.stroke();
+
+          const intake = {
+            startX: lakeCX - lakeRadius * 0.95,
+            startY: lakeCY - lakeRadius * 0.15,
+            cp1x: screenX - 14 * k,
+            cp1y: screenY + 24 * k,
+            cp2x: screenX - 10 * k,
+            cp2y: screenY + 8 * k,
+            endX: screenX - 3 * k,
+            endY: screenY
+          };
+          const discharge = {
+            startX: screenX + 4 * k,
+            startY: screenY + 2 * k,
+            cp1x: screenX + 20 * k,
+            cp1y: screenY + 6 * k,
+            cp2x: lakeCX + lakeRadius * 0.45,
+            cp2y: lakeCY - lakeRadius * 0.55,
+            endX: lakeCX + lakeRadius * 0.9,
+            endY: lakeCY - lakeRadius * 0.25
+          };
+
+          strokeCurve({
+            ...intake,
+            color: "rgba(125, 211, 252, 0.68)",
+            widthLine: Math.max(1.5, 2.5 * k),
+            dash: [10 * k, 18 * k]
+          });
+          strokeCurve({
+            ...discharge,
+            color: "rgba(251, 146, 60, 0.72)",
+            widthLine: Math.max(1.5, 2.5 * k),
+            dash: [10 * k, 18 * k]
+          });
+          drawArrowHead(intake.endX, intake.endY, Math.atan2(intake.endY - intake.cp2y, intake.endX - intake.cp2x), "rgba(125, 211, 252, 0.9)", Math.max(5, 6 * k));
+          drawArrowHead(discharge.endX, discharge.endY, Math.atan2(discharge.endY - discharge.cp2y, discharge.endX - discharge.cp2x), "rgba(251, 146, 60, 0.95)", Math.max(5, 6 * k));
+
+          drawLabel("COOLING WATER BODY", lakeCX, lakeCY + lakeRadius + 12 * k, "rgba(186, 230, 253, 0.96)");
+          drawLabel("THERMAL DISCHARGE", lakeCX + lakeRadius * 1.15, lakeCY - lakeRadius * 0.72, "rgba(253, 186, 116, 0.96)");
         }
+        drawLabel("PLANT HEAT EXCHANGER", screenX, screenY - 30 * k, "rgba(226, 232, 240, 0.96)");
         ctx.restore();
 
         // 2. Draw Simulated Thermal Discharge Plumes

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { feature } from "topojson-client";
 import { Leaf } from "lucide-react";
 import { geoGraticule } from "d3-geo";
@@ -15,7 +15,8 @@ import PlantTooltip from "./PlantTooltip";
 import SmrTooltip from "./SmrTooltip";
 import RegionChips from "./RegionChips";
 import ThermalCanvas from "./ThermalCanvas";
-import ThreeReactorOverlay from "./ThreeReactorOverlay";
+
+const ThreeReactorOverlay = lazy(() => import("./ThreeReactorOverlay"));
 
 const statesFc = feature(statesTopo, statesTopo.objects.states);
 const nationFc = feature(statesTopo, statesTopo.objects.nation);
@@ -117,6 +118,9 @@ export default function NuclearMap({
   }, [projection]);
 
   const selectedId = selectedPlant?.properties?.id ?? selectedPlant?.id ?? null;
+  const selectedProps = selectedPlant?.properties || {};
+  const selectedOutputMw = Number(selectedProps.current_mw_output) || 0;
+  const selectedCapacityMw = Number(selectedProps.total_mw_capacity) || 0;
 
   const ownershipLines = useMemo(() => {
     if (!selectedPlant || !projection) return [];
@@ -411,6 +415,32 @@ export default function NuclearMap({
         show={showThermal && selectedId !== null}
       />
 
+      {showThermal && selectedId !== null && (
+        <div className="flow-legend" aria-label="Cooling and thermal flow legend">
+          <div className="flow-legend-header">
+            <span>Cooling + Thermal Flow</span>
+            <strong>{selectedOutputMw ? `${Math.round(selectedOutputMw).toLocaleString()} MW` : "No output"}</strong>
+          </div>
+          <div className="flow-legend-row">
+            <i className="flow-swatch intake" aria-hidden="true" />
+            <span>Blue path: cooling water intake toward the plant.</span>
+          </div>
+          <div className="flow-legend-row">
+            <i className="flow-swatch discharge" aria-hidden="true" />
+            <span>Orange path: warmed water/heat discharge leaving the plant.</span>
+          </div>
+          <div className="flow-legend-row">
+            <i className="flow-swatch grid-effect" aria-hidden="true" />
+            <span>Green rings: regional low-carbon output effect.</span>
+          </div>
+          {selectedCapacityMw > 0 && (
+            <div className="flow-legend-note">
+              Output shown against {Math.round(selectedCapacityMw).toLocaleString()} MW nameplate capacity.
+            </div>
+          )}
+        </div>
+      )}
+
       <div className={`scada-hud${hudCollapsed ? " collapsed" : ""}`} aria-label="SCADA Telemetry and Map Controls">
         <div className="scada-hud-header" onClick={() => setHudCollapsed(!hudCollapsed)}>
           <span>📡 SCADA Instrument HUD</span>
@@ -462,7 +492,7 @@ export default function NuclearMap({
               className={`scada-toggle-btn${showThermal ? " active" : ""}`}
               onClick={() => setShowThermal(!showThermal)}
             >
-              <span>Selected Plant Flow</span>
+              <span>Cooling + Thermal Flow</span>
               <div className="scada-toggle-indicator" />
             </button>
             <button
@@ -535,11 +565,13 @@ export default function NuclearMap({
       {smrTooltipPos && <SmrTooltip site={hoveredSmr} x={smrTooltipPos.x} y={smrTooltipPos.y} />}
 
       {show3DOverlay && selectedPlant && (
-        <ThreeReactorOverlay
-          plant={selectedPlant}
-          onClose={() => setShow3DOverlay(false)}
-          onUpdatePlantMetrics={onUpdatePlantMetrics}
-        />
+        <Suspense fallback={null}>
+          <ThreeReactorOverlay
+            plant={selectedPlant}
+            onClose={() => setShow3DOverlay(false)}
+            onUpdatePlantMetrics={onUpdatePlantMetrics}
+          />
+        </Suspense>
       )}
     </div>
   );
