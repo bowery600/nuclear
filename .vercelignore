@@ -1,6 +1,6 @@
 requirements-dev.txt
 docker-compose.yml
-data/
+/data/
 frontend/node_modules/
 **/__pycache__/
 **/*.pyc
