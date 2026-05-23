@@ -1,6 +1,7 @@
 import { Zap, DollarSign, Activity } from "lucide-react";
 
 function fmt(value, digits = 0) {
+  if (value === null || value === undefined || value === "") return "--";
   const num = Number(value);
   if (!Number.isFinite(num)) return "--";
   return new Intl.NumberFormat("en-US", { maximumFractionDigits: digits }).format(num);

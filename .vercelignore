@@ -12,3 +12,8 @@ postgres-data/
 .github/
 sql/
 scripts/
+.env
+.env.local
+.env.*
+**/ .env
+**/ .env.*

@@ -464,25 +464,26 @@ h1 {
 
 .plant-metrics {
   display: grid;
-  grid-template-columns: 1fr;
-  gap: 10px;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
   padding: 14px 18px;
   border-bottom: 1px solid rgba(148, 163, 184, 0.16);
 }
 
 .plant-metric-card {
-  display: grid;
-  grid-template-columns: 22px 1fr;
-  gap: 2px 9px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
   min-width: 0;
-  padding: 12px;
+  padding: 12px 6px;
   border: 1px solid rgba(148, 163, 184, 0.16);
   border-radius: 8px;
   background: rgba(15, 23, 42, 0.45);
 }
 
 .plant-metric-card svg {
-  grid-row: 1 / 4;
+  margin-bottom: 6px;
   color: #67e8f9;
 }
 
@@ -498,6 +499,23 @@ h1 {
   min-height: 0;
   overflow-y: auto;
   padding: 16px 18px 18px;
+}
+
+.ownership-tree::-webkit-scrollbar {
+  width: 6px;
+}
+
+.ownership-tree::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.ownership-tree::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.25);
+  border-radius: 999px;
+}
+
+.ownership-tree::-webkit-scrollbar-thumb:hover {
+  background: rgba(103, 232, 249, 0.45);
 }
 
 .tree-root,

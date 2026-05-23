@@ -171,7 +171,7 @@ def resolve_nrc_power_status_url() -> str:
     soup = BeautifulSoup(html, "html.parser")
     for link in soup.find_all("a", href=True):
         label = " ".join(link.get_text(" ", strip=True).split()).lower()
-        if "power status" in label and "raw data" in label:
+        if "power" in label and "status" in label and "raw data" in label:
             return urljoin(NRC_REACTOR_STATUS_PAGE, link["href"])
     return NRC_POWER_STATUS_URL
 
@@ -193,15 +193,14 @@ def nrc_site_name(unit_name: str) -> str:
 
 
 def parse_nrc_power_status(text: str) -> list[NRCUnitStatus]:
-    compact = re.sub(r"\s+", " ", text.replace("\ufeff", " ")).strip()
+    text = text.replace("\ufeff", "")
     date_pattern = r"\d{1,2}/\d{1,2}/\d{4}\s+\d{1,2}:\d{2}:\d{2}\s+[AP]M"
     row_pattern = re.compile(
-        rf"(?P<date>{date_pattern})\|(?P<unit>.+?)\|(?P<power>-?\d+(?:\.\d+)?)"
-        rf"(?=\s+{date_pattern}\||$)"
+        rf"(?P<date>{date_pattern})\|(?P<unit>[^|]+)\|(?P<power>-?\d+(?:\.\d+)?)"
     )
 
     rows: list[NRCUnitStatus] = []
-    for match in row_pattern.finditer(compact):
+    for match in row_pattern.finditer(text):
         observed_at = datetime.strptime(match.group("date"), "%m/%d/%Y %I:%M:%S %p")
         observed_at = observed_at.replace(tzinfo=NRC_REPORT_TIMEZONE).astimezone(timezone.utc)
         unit_name = " ".join(match.group("unit").split())
@@ -217,6 +216,7 @@ def parse_nrc_power_status(text: str) -> list[NRCUnitStatus]:
     if not rows:
         raise RuntimeError("NRC power status text did not contain any parseable rows.")
     return rows
+
 
 
 def load_plants(cur: psycopg.Cursor) -> list[Plant]:
