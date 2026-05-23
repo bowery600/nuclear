@@ -229,6 +229,7 @@ function App() {
   const [replacementFuel, setReplacementFuel] = useState("grid");
   const [timelineYear, setTimelineYear] = useState(2026);
   const [showHistory, setShowHistory] = useState(false);
+  const [activeView, setActiveView] = useState("map");
 
   // States for 3D reactor overlays and manual power factor overrides
   const [plantOverrides, setPlantOverrides] = useState({});
@@ -441,15 +442,21 @@ function App() {
   return (
     <main className="app-shell">
       <section className="map-stage" aria-label="Nuclear plant map">
-        <NuclearMap
-          plants={filteredPlants}
-          selectedPlant={activeSelectedPlant}
-          onSelect={selectPlant}
-          metricMode={metricMode}
-          onUpdatePlantMetrics={handleUpdatePlantMetrics}
-          show3DOverlay={show3DOverlay}
-          setShow3DOverlay={setShow3DOverlay}
-        />
+        {activeView === "map" && (
+          <NuclearMap
+            plants={filteredPlants}
+            selectedPlant={activeSelectedPlant}
+            onSelect={selectPlant}
+            metricMode={metricMode}
+            onUpdatePlantMetrics={handleUpdatePlantMetrics}
+            show3DOverlay={show3DOverlay}
+            setShow3DOverlay={setShow3DOverlay}
+          />
+        )}
+
+        {activeView === "markets"  && <div className="view-placeholder">MARKETS view — coming soon</div>}
+        {activeView === "outages"  && <div className="view-placeholder">OUTAGES view — coming soon</div>}
+        {activeView === "pipeline" && <div className="view-placeholder">PIPELINE view — coming soon</div>}
 
         <TopRail
           query={query}
@@ -458,6 +465,8 @@ function App() {
           status={status}
           activeYear={timelineYear}
           onShowHistory={() => setShowHistory(true)}
+          activeView={activeView}
+          onChangeView={setActiveView}
         />
 
         <TickerRail plants={animatedPlants} />

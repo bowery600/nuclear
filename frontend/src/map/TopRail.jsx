@@ -1,6 +1,16 @@
 import { Search, Loader2, MapPin, Factory, BookOpen } from "lucide-react";
 
-export default function TopRail({ query, setQuery, visibleCount, status, activeYear, onShowHistory }) {
+const TABS = [
+  { id: "map",      label: "MAP" },
+  { id: "markets",  label: "MARKETS" },
+  { id: "outages",  label: "OUTAGES" },
+  { id: "pipeline", label: "PIPELINE" }
+];
+
+export default function TopRail({
+  query, setQuery, visibleCount, status, activeYear, onShowHistory,
+  activeView, onChangeView
+}) {
   return (
     <header className="top-rail">
       <div className="brand-block">
@@ -12,6 +22,20 @@ export default function TopRail({ query, setQuery, visibleCount, status, activeY
           <h1>Ownership Map</h1>
         </div>
       </div>
+
+      <nav className="view-tabs" role="tablist" aria-label="Primary views">
+        {TABS.map((tab) => (
+          <button
+            key={tab.id}
+            role="tab"
+            aria-selected={activeView === tab.id}
+            className={`view-tab ${activeView === tab.id ? "active" : ""}`}
+            onClick={() => onChangeView(tab.id)}
+          >
+            {tab.label}
+          </button>
+        ))}
+      </nav>
 
       <label className="search-box" htmlFor="plant-search">
         <Search size={18} aria-hidden="true" />
