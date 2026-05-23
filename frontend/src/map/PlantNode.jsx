@@ -11,6 +11,24 @@ function sizeFromCapacity(capacityMw) {
   };
 }
 
+// Hyperboloid cooling tower silhouette, centered at origin.
+// Width = 2 * size, height ≈ 2.6 * size, narrower at the waist, slight top lip.
+function towerPath(size) {
+  const baseHalf = size;
+  const topHalf = size * 0.7;
+  const waistHalf = size * 0.55;
+  const bottomY = size * 1.2;
+  const waistY = -size * 0.4;
+  const topY = -size * 1.4;
+  return (
+    `M ${-baseHalf},${bottomY}` +
+    ` C ${-waistHalf},${waistY * 0.3} ${-waistHalf},${waistY} ${-topHalf},${topY}` +
+    ` L ${topHalf},${topY}` +
+    ` C ${waistHalf},${waistY} ${waistHalf},${waistY * 0.3} ${baseHalf},${bottomY}` +
+    ` Z`
+  );
+}
+
 function PlantNodeImpl({ plant, x, y, metricMode, selected, onHover, onLeave, onSelect, scale }) {
   const props = plant.properties || {};
   const color = colorForPlant(plant, metricMode);
@@ -20,8 +38,9 @@ function PlantNodeImpl({ plant, x, y, metricMode, selected, onHover, onLeave, on
     0,
     Math.min(1, Number(props.capacity_percentage) / 100 || 0)
   );
-  const pulseAmplitude = 0.4 + outputRatio * 0.9;
-  const pulseDuration = 2.4 - outputRatio * 0.9;
+  const steamDuration = 3.2 - outputRatio * 1.2;
+  const tower = towerPath(node);
+  const topY = -node * 1.4;
 
   const label = [props.plant_name, props.state].filter(Boolean).join(", ") || "Plant";
 
@@ -58,39 +77,71 @@ function PlantNodeImpl({ plant, x, y, metricMode, selected, onHover, onLeave, on
         opacity={0.26}
         filter="url(#plantGlow)"
       />
-      <circle className="plant-pulse" r={node} fill={color} opacity={0.55}>
-        <animate
-          attributeName="r"
-          values={`${node};${node * (1 + pulseAmplitude)};${node}`}
-          dur={`${pulseDuration}s`}
-          repeatCount="indefinite"
-        />
-        <animate
-          attributeName="opacity"
-          values="0.55;0;0.55"
-          dur={`${pulseDuration}s`}
-          repeatCount="indefinite"
-        />
-      </circle>
-      <circle
+
+      {/* Steam plume rising from the tower top */}
+      <g className="plant-steam" pointerEvents="none">
+        <ellipse
+          cx={0}
+          cy={topY - node * 0.4}
+          rx={node * 0.55}
+          ry={node * 0.32}
+          fill="#e2e8f0"
+          opacity={0.55}
+        >
+          <animate
+            attributeName="cy"
+            values={`${topY - node * 0.3};${topY - node * 1.4}`}
+            dur={`${steamDuration}s`}
+            repeatCount="indefinite"
+          />
+          <animate
+            attributeName="opacity"
+            values="0.55;0"
+            dur={`${steamDuration}s`}
+            repeatCount="indefinite"
+          />
+          <animate
+            attributeName="rx"
+            values={`${node * 0.45};${node * 0.9}`}
+            dur={`${steamDuration}s`}
+            repeatCount="indefinite"
+          />
+        </ellipse>
+      </g>
+
+      {/* Cooling tower silhouette */}
+      <path
         className="plant-core"
-        r={node}
+        d={tower}
         fill={color}
         stroke="#f8fafc"
         strokeOpacity={0.92}
-        strokeWidth={1.2}
+        strokeWidth={1}
+        strokeLinejoin="round"
       />
+
+      {/* Inner curve highlight for hyperboloid feel */}
+      <path
+        d={`M ${-node * 0.7},${topY + node * 0.15} L ${node * 0.7},${topY + node * 0.15}`}
+        stroke="rgba(255,255,255,0.35)"
+        strokeWidth={0.8}
+        fill="none"
+        pointerEvents="none"
+      />
+
       {selected && (
-        <circle
+        <path
           className="plant-ring"
-          r={node + 5}
+          d={towerPath(node + 4)}
           fill="none"
           stroke="#ffffff"
           strokeOpacity={0.9}
-          strokeWidth={2}
+          strokeWidth={1.8}
+          strokeLinejoin="round"
         />
       )}
-      <circle className="plant-hit" r={Math.max(node + 6, 12)} fill="transparent" />
+
+      <circle className="plant-hit" r={Math.max(node * 1.8, 14)} fill="transparent" />
     </g>
   );
 }

@@ -89,18 +89,24 @@ export default function NuclearMap({ plants, selectedPlant, onSelect, metricMode
       });
   }, [selectedPlant, selectedId, projectedPlants, projection]);
 
+  const hasFittedRef = useRef(false);
   useEffect(() => {
-    if (!projection || features.length === 0 || selectedPlant) return;
+    if (!projection || features.length === 0 || hasFittedRef.current) return;
     const bbox = bboxOfFeatures(projection, features);
-    if (bbox) animateToBounds(bbox);
-  }, [features, projection, animateToBounds, selectedPlant]);
+    if (bbox) {
+      animateToBounds(bbox, undefined, 220);
+      hasFittedRef.current = true;
+    }
+  }, [features, projection, animateToBounds]);
 
   useEffect(() => {
     if (!projection || !selectedPlant) return;
     const p = projectPlant(projection, selectedPlant);
     if (!p) return;
-    const bbox = { minX: p[0] - 60, minY: p[1] - 60, maxX: p[0] + 60, maxY: p[1] + 60 };
-    animateToBounds(bbox, { top: 120, right: 460, bottom: 80, left: 80 });
+    // Gentler centering: wider bbox keeps surrounding context visible
+    // instead of slamming the camera all the way in.
+    const bbox = { minX: p[0] - 240, minY: p[1] - 240, maxX: p[0] + 240, maxY: p[1] + 240 };
+    animateToBounds(bbox, { top: 120, right: 460, bottom: 80, left: 80 }, 260);
   }, [selectedPlant, projection, animateToBounds]);
 
   const regionMeta = useMemo(() => {
@@ -159,6 +165,13 @@ export default function NuclearMap({ plants, selectedPlant, onSelect, metricMode
           <filter id="plantGlow" x="-60%" y="-60%" width="220%" height="220%">
             <feGaussianBlur stdDeviation="6" />
           </filter>
+          <filter id="wireGlow" x="-30%" y="-30%" width="160%" height="160%">
+            <feGaussianBlur stdDeviation="2.2" result="blur" />
+            <feMerge>
+              <feMergeNode in="blur" />
+              <feMergeNode in="SourceGraphic" />
+            </feMerge>
+          </filter>
           <radialGradient id="bgGlow" cx="50%" cy="40%" r="70%">
             <stop offset="0%" stopColor="#0f172a" stopOpacity="0.0" />
             <stop offset="100%" stopColor="#020617" stopOpacity="0.6" />
@@ -205,17 +218,45 @@ export default function NuclearMap({ plants, selectedPlant, onSelect, metricMode
             </g>
 
             {ownershipLines.length > 0 && (
-              <g className="ownership-lines">
-                {ownershipLines.map((line) => (
-                  <path
-                    key={line.id}
-                    d={line.d}
-                    fill="none"
-                    stroke="rgba(248, 250, 252, 0.45)"
-                    strokeWidth={1 / transform.k}
-                    strokeDasharray={`${4 / transform.k} ${4 / transform.k}`}
-                  />
-                ))}
+              <g className="ownership-lines" filter="url(#wireGlow)">
+                {ownershipLines.map((line, index) => {
+                  const sw = 1.6 / transform.k;
+                  const pulseLen = 18 / transform.k;
+                  const gapLen = 140 / transform.k;
+                  const cycle = pulseLen + gapLen;
+                  // Stagger starts so currents don't all blink together.
+                  const begin = `${-(index * 0.35) % 1.8}s`;
+                  return (
+                    <g key={line.id}>
+                      {/* Steady wire */}
+                      <path
+                        d={line.d}
+                        fill="none"
+                        stroke="rgba(103, 232, 249, 0.55)"
+                        strokeWidth={sw}
+                        strokeLinecap="round"
+                      />
+                      {/* Traveling current pulse */}
+                      <path
+                        d={line.d}
+                        fill="none"
+                        stroke="#f0fdfa"
+                        strokeWidth={sw * 1.8}
+                        strokeLinecap="round"
+                        strokeDasharray={`${pulseLen} ${gapLen}`}
+                      >
+                        <animate
+                          attributeName="stroke-dashoffset"
+                          from={cycle}
+                          to={0}
+                          dur="1.8s"
+                          begin={begin}
+                          repeatCount="indefinite"
+                        />
+                      </path>
+                    </g>
+                  );
+                })}
               </g>
             )}
 

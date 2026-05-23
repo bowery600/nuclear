@@ -12,7 +12,8 @@ export function useZoom({ width, height, scaleExtent = [1, 8] }) {
 
   useEffect(() => {
     if (!svgRef.current) return undefined;
-    const svgSelection = select(svgRef.current);
+    const svgNode = svgRef.current;
+    const svgSelection = select(svgNode);
     const behavior = d3Zoom()
       .scaleExtent(scaleExtent)
       .filter((event) => {
@@ -26,14 +27,24 @@ export function useZoom({ width, height, scaleExtent = [1, 8] }) {
     svgSelection.call(behavior);
     zoomRef.current = behavior;
 
+    // Interrupt any in-flight zoom transition the moment the user touches
+    // the map, so click-to-zoom doesn't lock them out.
+    const interrupt = () => svgSelection.interrupt();
+    svgNode.addEventListener("wheel", interrupt, { passive: true });
+    svgNode.addEventListener("mousedown", interrupt);
+    svgNode.addEventListener("touchstart", interrupt, { passive: true });
+
     return () => {
       svgSelection.on(".zoom", null);
+      svgNode.removeEventListener("wheel", interrupt);
+      svgNode.removeEventListener("mousedown", interrupt);
+      svgNode.removeEventListener("touchstart", interrupt);
       zoomRef.current = null;
     };
   }, [scaleExtent]);
 
   const animateToBounds = useCallback(
-    (bbox, padding = DEFAULT_PADDING, duration = 700) => {
+    (bbox, padding = DEFAULT_PADDING, duration = 260) => {
       if (!svgRef.current || !zoomRef.current || !bbox || !width || !height) return;
       const pad = { ...DEFAULT_PADDING, ...padding };
       const usableW = Math.max(80, width - pad.left - pad.right);
@@ -60,7 +71,7 @@ export function useZoom({ width, height, scaleExtent = [1, 8] }) {
   );
 
   const resetZoom = useCallback(
-    (duration = 600) => {
+    (duration = 260) => {
       if (!svgRef.current || !zoomRef.current) return;
       select(svgRef.current)
         .transition()
