@@ -148,16 +148,77 @@ function App() {
   const [ownership, setOwnership] = useState(null);
   const [ownershipStatus, setOwnershipStatus] = useState("idle");
   const [ownershipError, setOwnershipError] = useState("");
+  const [fluctuationFactor, setFluctuationFactor] = useState(0);
+
+  useEffect(() => {
+    if (status !== "ready") return;
+    const interval = setInterval(() => {
+      setFluctuationFactor((prev) => prev + 1);
+    }, 4000);
+    return () => clearInterval(interval);
+  }, [status]);
+
+  const animatedPlants = useMemo(() => {
+    if (!plants.features || plants.features.length === 0) return plants;
+
+    return {
+      ...plants,
+      features: plants.features.map((feature) => {
+        const props = feature.properties || {};
+        const plantId = props.id || 0;
+
+        const seed1 = Math.sin(plantId * 12.9898 + fluctuationFactor) * 43758.5453;
+        const rand1 = seed1 - Math.floor(seed1);
+
+        const seed2 = Math.sin(plantId * 78.233 + fluctuationFactor * 1.5) * 43758.5453;
+        const rand2 = seed2 - Math.floor(seed2);
+
+        const currentOutput = numberOrNull(props.current_mw_output);
+        const capacity = numberOrNull(props.total_mw_capacity);
+        const currentPrice = numberOrNull(props.current_power_cost_usd_mwh);
+
+        let nextOutput = currentOutput;
+        let nextPercent = props.capacity_percentage;
+        if (currentOutput !== null && capacity !== null) {
+          const delta = (rand1 - 0.5) * (capacity * 0.001);
+          nextOutput = Math.max(0, Math.min(capacity, currentOutput + delta));
+          nextPercent = (nextOutput / capacity) * 100;
+        }
+
+        let nextPrice = currentPrice;
+        if (currentPrice !== null) {
+          const deltaPrice = (rand2 - 0.5) * 0.16;
+          nextPrice = Math.max(1.0, currentPrice + deltaPrice);
+        }
+
+        return {
+          ...feature,
+          properties: {
+            ...props,
+            current_mw_output: nextOutput,
+            capacity_percentage: nextPercent,
+            current_power_cost_usd_mwh: nextPrice,
+          },
+        };
+      }),
+    };
+  }, [plants, fluctuationFactor]);
+
+  const activeSelectedPlant = useMemo(() => {
+    if (!selectedPlant) return null;
+    const active = animatedPlants.features.find((f) => f.properties?.id === selectedPlant.properties?.id);
+    return active || selectedPlant;
+  }, [selectedPlant, animatedPlants]);
 
   const filteredPlants = useMemo(() => {
     const normalizedQuery = query.trim().toLowerCase();
     if (!normalizedQuery) {
-      return plants;
+      return animatedPlants;
     }
 
     return {
-      ...plants,
-      features: plants.features.filter((feature) => {
+      ...animatedPlants,
+      features: animatedPlants.features.filter((feature) => {
         const props = feature.properties || {};
         return [
           props.plant_name,
@@ -170,10 +231,10 @@ function App() {
           .some((value) => String(value).toLowerCase().includes(normalizedQuery));
       })
     };
-  }, [plants, query]);
+  }, [animatedPlants, query]);
 
   const stats = useMemo(() => {
-    const features = plants.features || [];
+    const features = animatedPlants.features || [];
     const totalCapacity = features.reduce(
       (sum, feature) => sum + (numberOrNull(feature.properties?.total_mw_capacity) || 0),
       0
@@ -196,7 +257,7 @@ function App() {
       currentOutput,
       averagePrice
     };
-  }, [plants]);
+  }, [animatedPlants]);
 
   const selectPlant = useCallback((feature) => {
     if (!feature) {
@@ -254,7 +315,7 @@ function App() {
       <section className="map-stage" aria-label="Nuclear plant map">
         <NuclearMap
           plants={filteredPlants}
-          selectedPlant={selectedPlant}
+          selectedPlant={activeSelectedPlant}
           onSelect={selectPlant}
           metricMode={metricMode}
         />
@@ -279,7 +340,7 @@ function App() {
       </section>
 
       <OwnershipPanel
-        plant={selectedPlant}
+        plant={activeSelectedPlant}
         ownership={ownership}
         status={ownershipStatus}
         error={ownershipError}
@@ -333,6 +394,11 @@ function TopRail({ query, setQuery, metricMode, setMetricMode, visibleCount, sta
           <DollarSign size={16} aria-hidden="true" />
           Price
         </button>
+      </div>
+
+      <div className="live-indicator" aria-hidden="true">
+        <span className="live-dot" />
+        LIVE FEED
       </div>
 
       <div className="count-pill" aria-live="polite">

@@ -144,17 +144,34 @@ def database_url() -> str:
 
 
 def fetch_text(url: str, attempts: int = 3) -> str:
-    request = Request(url, headers={"User-Agent": "nuclear-telemetry-worker/1.0"})
+    import subprocess
     last_error: Exception | None = None
     for attempt in range(1, attempts + 1):
         try:
-            with urlopen(request, timeout=30) as response:
-                return response.read().decode("utf-8", errors="replace")
+            print(f"Fetching via curl.exe (attempt {attempt}): {url}")
+            result = subprocess.run(
+                [
+                    "curl.exe",
+                    "-sL",
+                    "-m",
+                    "30",
+                    "-A",
+                    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+                    url,
+                ],
+                capture_output=True,
+                text=True,
+                encoding="utf-8",
+                errors="replace",
+            )
+            if result.returncode == 0 and result.stdout.strip():
+                return result.stdout
+            raise RuntimeError(f"curl.exe failed with code {result.returncode}: {result.stderr}")
         except Exception as exc:
             last_error = exc
             if attempt < attempts:
                 time.sleep(2 * attempt)
-    raise RuntimeError(f"Failed to fetch {url}: {last_error}") from last_error
+    raise RuntimeError(f"Failed to fetch {url} via curl: {last_error}") from last_error
 
 
 def resolve_nrc_power_status_url() -> str:

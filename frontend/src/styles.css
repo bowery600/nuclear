@@ -214,7 +214,7 @@ button {
   left: 18px;
   right: 398px;
   display: grid;
-  grid-template-columns: minmax(230px, 1fr) minmax(240px, 420px) auto auto;
+  grid-template-columns: minmax(230px, 1fr) minmax(240px, 420px) auto auto auto;
   gap: 12px;
   align-items: center;
   pointer-events: none;
@@ -223,6 +223,46 @@ button {
 .top-rail > * {
   pointer-events: auto;
 }
+
+.live-indicator {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  height: 48px;
+  padding: 0 14px;
+  border-radius: 8px;
+  border: 1px solid rgba(239, 68, 68, 0.35);
+  background: rgba(127, 29, 29, 0.2);
+  color: #ef4444;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  white-space: nowrap;
+}
+
+.live-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #ef4444;
+  box-shadow: 0 0 8px #ef4444;
+  animation: live-pulse 1.4s infinite alternate;
+}
+
+@keyframes live-pulse {
+  0% {
+    transform: scale(0.85);
+    opacity: 0.5;
+    box-shadow: 0 0 6px rgba(239, 68, 68, 0.5);
+  }
+  100% {
+    transform: scale(1.2);
+    opacity: 1;
+    box-shadow: 0 0 12px rgba(239, 68, 68, 0.9);
+  }
+}
+
 
 .brand-block,
 .search-box,
