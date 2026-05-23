@@ -1,8 +1,10 @@
 import { useEffect, useRef, useState } from "react";
 import * as THREE from "three";
 import { Sliders, Activity, Info, X, Zap } from "lucide-react";
+import { useDialogFocus } from "../hooks/useDialogFocus";
 
 export default function ThreeReactorOverlay({ plant, onClose, onUpdatePlantMetrics }) {
+  const dialogRef = useRef(null);
   const mountRef = useRef(null);
   
   const props = plant?.properties || {};
@@ -13,6 +15,7 @@ export default function ThreeReactorOverlay({ plant, onClose, onUpdatePlantMetri
   const [selectedComponent, setSelectedComponent] = useState("rpv");
   const controlRodDepthRef = useRef(controlRodDepth);
   const selectedComponentRef = useRef(selectedComponent);
+  useDialogFocus(dialogRef, onClose, { initialFocus: ".close-btn" });
 
   // Multi-state component telemetry
   const telemetry = {
@@ -60,17 +63,6 @@ export default function ThreeReactorOverlay({ plant, onClose, onUpdatePlantMetri
   useEffect(() => {
     selectedComponentRef.current = selectedComponent;
   }, [selectedComponent]);
-
-  useEffect(() => {
-    function handleKeyDown(event) {
-      if (event.key === "Escape") {
-        onClose?.();
-      }
-    }
-
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [onClose]);
 
   // Slider change handler - Syncs physical rod height in 3D and metrics back to the parent state
   const handleRodSliderChange = (e) => {
@@ -490,14 +482,20 @@ export default function ThreeReactorOverlay({ plant, onClose, onUpdatePlantMetri
   const activeTelemetry = telemetry[selectedComponent];
 
   return (
-    <div className="three-reactor-overlay">
+    <div
+      ref={dialogRef}
+      className="three-reactor-overlay"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="core-inspector-title"
+    >
       <div className="three-reactor-card">
         {/* Header */}
         <div className="three-reactor-header">
           <div className="title-block">
             <Zap className="accent-glow spin-on-hover" size={18} style={{ color: "#00d4ff" }} />
             <div>
-              <h3>3D Core Inspector</h3>
+              <h3 id="core-inspector-title">3D Core Inspector</h3>
               <span>{plantName}</span>
             </div>
           </div>

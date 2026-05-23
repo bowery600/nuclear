@@ -8,8 +8,15 @@ export default function ThermalCanvas({ width, height, transform, projectedPlant
 
     const canvas = canvasRef.current;
     const ctx = canvas.getContext("2d");
+    const dpr = window.devicePixelRatio || 1;
     let animationId;
     let time = 0;
+
+    canvas.width = Math.round(width * dpr);
+    canvas.height = Math.round(height * dpr);
+    canvas.style.width = `${width}px`;
+    canvas.style.height = `${height}px`;
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
     // Helper to check if a plant is river-cooled or lake/ocean-cooled
     const getCoolingType = (plantName) => {
@@ -42,7 +49,6 @@ export default function ThermalCanvas({ width, height, transform, projectedPlant
       ctx.save();
       ctx.font = `${Math.max(9, Math.min(12, 10 * transform.k))}px ui-monospace, SFMono-Regular, Consolas, monospace`;
       ctx.textBaseline = "middle";
-      ctx.letterSpacing = "0.4px";
       const paddingX = 6 * transform.k;
       const widthText = ctx.measureText(text).width;
       const boxW = widthText + paddingX * 2;

@@ -1,11 +1,14 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Search, X } from "lucide-react";
 import { buildIndex, searchIndex } from "../data/commandIndex";
+import { useDialogFocus } from "../hooks/useDialogFocus";
 
 export default function CommandPalette({ plantFeatures, onClose, onDispatch }) {
   const [query, setQuery] = useState("");
   const [cursor, setCursor] = useState(0);
   const inputRef = useRef(null);
+  const modalRef = useRef(null);
+  useDialogFocus(modalRef, onClose, { initialFocus: ".cmd-input" });
 
   const index = useMemo(() => buildIndex(plantFeatures), [plantFeatures]);
   const results = useMemo(() => searchIndex(index, query), [index, query]);
@@ -34,15 +37,19 @@ export default function CommandPalette({ plantFeatures, onClose, onDispatch }) {
     } else if (event.key === "Enter") {
       event.preventDefault();
       execute(results[cursor]);
-    } else if (event.key === "Escape") {
-      event.preventDefault();
-      onClose();
     }
   }
 
   return (
     <div className="cmd-backdrop" onClick={onClose}>
-      <section className="cmd-modal" role="dialog" aria-label="Command palette" onClick={(event) => event.stopPropagation()}>
+      <section
+        ref={modalRef}
+        className="cmd-modal"
+        role="dialog"
+        aria-modal="true"
+        aria-label="Command palette"
+        onClick={(event) => event.stopPropagation()}
+      >
         <div className="cmd-input-row">
           <Search size={16} aria-hidden="true" />
           <input

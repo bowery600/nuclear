@@ -1,6 +1,7 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { ExternalLink, X } from "lucide-react";
 import { NEWS_ITEMS, NEWS_TOPICS } from "../data/newsSeed";
+import { useDialogFocus } from "../hooks/useDialogFocus";
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "";
 
@@ -28,9 +29,11 @@ function cleanText(value) {
 }
 
 export default function NewsOverlay({ onClose, onTicker }) {
+  const panelRef = useRef(null);
   const [topic, setTopic] = useState("ALL");
   const [items, setItems] = useState(NEWS_ITEMS);
   const [isFallback, setIsFallback] = useState(true);
+  useDialogFocus(panelRef, onClose, { initialFocus: ".overlay-icon-btn" });
 
   useEffect(() => {
     const controller = new AbortController();
@@ -68,11 +71,17 @@ export default function NewsOverlay({ onClose, onTicker }) {
   }, [isFallback, items]);
 
   return (
-    <aside className="news-overlay" role="dialog" aria-label="Nuclear news feed">
+    <aside
+      ref={panelRef}
+      className="news-overlay"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="news-title"
+    >
       <header className="news-header">
         <div>
           <p className="news-eyebrow">{isFallback ? "Fallback Wire" : "Live Wire"}</p>
-          <h2>NUCLEAR NEWS</h2>
+          <h2 id="news-title">NUCLEAR NEWS</h2>
         </div>
         <button className="overlay-icon-btn" type="button" onClick={onClose} aria-label="Close news feed">
           <X size={16} />

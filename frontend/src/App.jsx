@@ -38,13 +38,25 @@ const MarketsView = lazy(() => import("./views/MarketsView"));
 const OutagesView = lazy(() => import("./views/OutagesView"));
 const PipelineView = lazy(() => import("./views/PipelineView"));
 const NewsOverlay = lazy(() => import("./overlays/NewsOverlay"));
+const HelpOverlay = lazy(() => import("./overlays/HelpOverlay"));
 const CommandPalette = lazy(() => import("./overlays/CommandPalette"));
 const TickerDetailDrawer = lazy(() => import("./overlays/TickerDetailDrawer"));
+
+const HELP_SEEN_KEY = "core-trace-help-seen-v1";
 
 const emptyCollection = {
   type: "FeatureCollection",
   features: []
 };
+
+function LoadingSurface({ label, kind = "view" }) {
+  return (
+    <div className={`loading-surface ${kind}`} role="status" aria-live="polite">
+      <Loader2 size={18} className="spin" aria-hidden="true" />
+      <span>{label}</span>
+    </div>
+  );
+}
 
 function numberOrNull(value) {
   if (value === null || value === undefined || value === "") {
@@ -236,7 +248,7 @@ function App() {
   const [showTree, setShowTree] = useState(false);
   const [replacementFuel, setReplacementFuel] = useState("grid");
   const [timelineYear, setTimelineYear] = useState(2026);
-  const [overlay, setOverlay] = useState(null); // null | "news" | "cmd" | "archives"
+  const [overlay, setOverlay] = useState(null); // null | "help" | "news" | "cmd" | "archives"
   const [activeView, setActiveView] = useState("map");
   const [highlightTicker, setHighlightTicker] = useState(null);
   const [selectedTicker, setSelectedTicker] = useState(null);
@@ -251,6 +263,39 @@ function App() {
       ...prev,
       [plantId]: { capacity_percentage: capacityPercent, current_mw_output: mwOutput }
     }));
+  }, []);
+
+  const markHelpSeen = useCallback(() => {
+    try {
+      window.localStorage.setItem(HELP_SEEN_KEY, "true");
+    } catch {
+      // Private browsing or locked storage should not block the interface.
+    }
+  }, []);
+
+  const closeHelpOverlay = useCallback(() => {
+    markHelpSeen();
+    setOverlay(null);
+  }, [markHelpSeen]);
+
+  const toggleOverlay = useCallback((nextOverlay) => {
+    setOverlay((current) => {
+      if (current === "help") {
+        markHelpSeen();
+      }
+      return current === nextOverlay ? null : nextOverlay;
+    });
+  }, [markHelpSeen]);
+
+  useEffect(() => {
+    try {
+      if (window.localStorage.getItem(HELP_SEEN_KEY) === "true") {
+        return;
+      }
+    } catch {
+      // If storage is unavailable, still show the welcome for this session.
+    }
+    setOverlay("help");
   }, []);
 
   useEffect(() => {
@@ -520,7 +565,7 @@ function App() {
   }, [animatedPlants, selectPlant]);
 
   return (
-    <main className="app-shell">
+    <main className={`app-shell ${activeSelectedPlant ? "has-selection" : "no-selection"}`}>
       <section className="map-stage" aria-label="Nuclear plant map">
         {activeView === "map" && (
           <NuclearMap
@@ -548,7 +593,7 @@ function App() {
         )}
 
         {activeView === "markets" && (
-          <Suspense fallback={null}>
+          <Suspense fallback={<LoadingSurface label="Loading markets workspace" />}>
             <MarketsView
               onHighlightTicker={setHighlightTicker}
               highlightTicker={highlightTicker}
@@ -557,7 +602,7 @@ function App() {
           </Suspense>
         )}
         {activeView === "outages" && (
-          <Suspense fallback={null}>
+          <Suspense fallback={<LoadingSurface label="Loading outage timeline" />}>
             <OutagesView
               plants={animatedPlants.features}
               year={timelineYear}
@@ -567,7 +612,7 @@ function App() {
           </Suspense>
         )}
         {activeView === "pipeline" && (
-          <Suspense fallback={null}>
+          <Suspense fallback={<LoadingSurface label="Loading pipeline tracker" />}>
             <PipelineView requestedVendor={pipelineVendorFilter} />
           </Suspense>
         )}
@@ -581,7 +626,7 @@ function App() {
           activeView={activeView}
           onChangeView={setActiveView}
           overlay={overlay}
-          onToggleOverlay={(nextOverlay) => setOverlay((current) => (current === nextOverlay ? null : nextOverlay))}
+          onToggleOverlay={toggleOverlay}
         />
 
         <TickerRail plants={animatedPlants} onSelectTicker={setSelectedTicker} />
@@ -626,7 +671,7 @@ function App() {
       )}
 
       {activeView === "map" && showTree && activeSelectedPlant && ownership && (
-        <Suspense fallback={null}>
+        <Suspense fallback={<LoadingSurface label="Loading stakeholder tree" kind="overlay" />}>
           <StakeholderTree
             plant={activeSelectedPlant}
             ownership={ownership}
@@ -636,12 +681,17 @@ function App() {
       )}
 
       {overlay === "archives" && (
-        <Suspense fallback={null}>
+        <Suspense fallback={<LoadingSurface label="Loading archives" kind="overlay" />}>
           <NuclearHistory onClose={() => setOverlay(null)} />
         </Suspense>
       )}
+      {overlay === "help" && (
+        <Suspense fallback={<LoadingSurface label="Loading help" kind="overlay" />}>
+          <HelpOverlay onClose={closeHelpOverlay} />
+        </Suspense>
+      )}
       {overlay === "news" && (
-        <Suspense fallback={null}>
+        <Suspense fallback={<LoadingSurface label="Loading news wire" kind="overlay" />}>
           <NewsOverlay
             onClose={() => setOverlay(null)}
             onTicker={(ticker) => {
@@ -654,7 +704,7 @@ function App() {
         </Suspense>
       )}
       {overlay === "cmd" && (
-        <Suspense fallback={null}>
+        <Suspense fallback={<LoadingSurface label="Loading command palette" kind="overlay" />}>
           <CommandPalette
             plantFeatures={animatedPlants.features}
             onClose={() => setOverlay(null)}
@@ -663,7 +713,7 @@ function App() {
         </Suspense>
       )}
       {selectedTicker && (
-        <Suspense fallback={null}>
+        <Suspense fallback={<LoadingSurface label="Loading market detail" kind="overlay" />}>
           <TickerDetailDrawer
             symbol={selectedTicker}
             plants={animatedPlants.features}
@@ -877,7 +927,7 @@ function OwnershipPanel({ plant, ownership, status, error, onClose, onVisualizeT
   };
 
   return (
-    <aside className="side-panel" aria-label="Plant details" aria-busy={status === "loading"}>
+    <aside className={`side-panel${plant ? "" : " empty-panel"}`} aria-label="Plant details" aria-busy={status === "loading"}>
       {plant ? (
         <>
           <div className="panel-header">

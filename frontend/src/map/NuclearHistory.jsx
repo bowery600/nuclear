@@ -16,6 +16,7 @@ import {
   Building2,
   Cpu
 } from "lucide-react";
+import { useDialogFocus } from "../hooks/useDialogFocus";
 
 // Academic Sources & Bibliography database
 const BIBLIOGRAPHY = [
@@ -271,6 +272,7 @@ const FUEL_CYCLE_SECTIONS = [
 ];
 
 export default function NuclearHistory({ onClose }) {
+  const dialogRef = useRef(null);
   const [activeTab, setActiveTab] = useState("eras"); // "eras" | "pioneers" | "incidents" | "fuel" | "sources"
   const [selectedEraId, setSelectedEraId] = useState("era-1");
   const [searchQuery, setSearchQuery] = useState("");
@@ -279,6 +281,7 @@ export default function NuclearHistory({ onClose }) {
   const [tooltipPos, setTooltipPos] = useState({ x: 0, y: 0 });
 
   const bibliographyRef = useRef(null);
+  useDialogFocus(dialogRef, onClose, { initialFocus: ".history-search-wrapper input" });
 
   // Rotate trivia facts
   useEffect(() => {
@@ -390,7 +393,13 @@ export default function NuclearHistory({ onClose }) {
   };
 
   return (
-    <div className="history-overlay">
+    <div
+      ref={dialogRef}
+      className="history-overlay"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="history-title"
+    >
       <div className="history-container">
         
         {/* Header Block */}
@@ -400,8 +409,8 @@ export default function NuclearHistory({ onClose }) {
               <BookOpen size={18} />
             </div>
             <div>
-              <p className="eyebrow">NUC.OWN Archives</p>
-              <h2>Nuclear Power History & Science</h2>
+              <p className="eyebrow">Core Trace Archives</p>
+              <h2 id="history-title">Nuclear Power History & Science</h2>
             </div>
           </div>
 
@@ -416,13 +425,13 @@ export default function NuclearHistory({ onClose }) {
                 onChange={(e) => setSearchQuery(e.target.value)}
               />
               {searchQuery && (
-                <button className="clear-search-btn" onClick={() => setSearchQuery("")}>
+                <button className="clear-search-btn" onClick={() => setSearchQuery("")} aria-label="Clear archive search">
                   <X size={14} />
                 </button>
               )}
             </div>
 
-            <button className="close-history-btn" onClick={onClose}>
+            <button className="close-history-btn" onClick={onClose} aria-label="Back to live grid">
               <ArrowLeft size={16} />
               <span>Back to Live Grid</span>
             </button>
@@ -711,7 +720,7 @@ export default function NuclearHistory({ onClose }) {
                 <div className="sources-view" ref={bibliographyRef}>
                   <div className="view-intro">
                     <h3>Academic Bibliography & Citations</h3>
-                    <p>All historical facts, nuclear physics findings, and incident analyses in NUC.OWN are rigorously grounded in official reports, peer-reviewed scientific papers, and international atomic agency records.</p>
+                    <p>All historical facts, nuclear physics findings, and incident analyses in Core Trace are rigorously grounded in official reports, peer-reviewed scientific papers, and international atomic agency records.</p>
                   </div>
                   
                   <div className="bibliography-list">

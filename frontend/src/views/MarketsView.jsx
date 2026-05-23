@@ -154,7 +154,9 @@ export default function MarketsView({ onHighlightTicker, highlightTicker, onSele
             })}
           </tbody>
         </table>
-        <p className="markets-footnote">Rows use live no-key Yahoo chart quote data when available; click a row for history and plant exposure.</p>
+        <p className="markets-footnote">
+          Educational demo only, not investment advice. Rows use live no-key Yahoo chart quote data when available; click a row for history and plant exposure.
+        </p>
       </div>
     </div>
   );

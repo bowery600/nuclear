@@ -11,8 +11,10 @@ import {
   TrendingUp,
   Globe
 } from "lucide-react";
+import { useDialogFocus } from "../hooks/useDialogFocus";
 
 export default function StakeholderTree({ plant, ownership, onClose }) {
+  const dialogRef = useRef(null);
   const svgRef = useRef(null);
   const containerRef = useRef(null);
   const tooltipRef = useRef(null);
@@ -24,6 +26,7 @@ export default function StakeholderTree({ plant, ownership, onClose }) {
   const plantNameText = plantProps.plant_name || ownership?.plant?.plant_name || "Nuclear Plant";
   const stateText = plantProps.state || "";
   const capacityText = plantProps.total_mw_capacity || "";
+  useDialogFocus(dialogRef, onClose, { initialFocus: ".icon-button" });
 
   // 1. Convert ownership API payload to D3 hierarchical structure
   const buildTreeData = () => {
@@ -458,7 +461,7 @@ export default function StakeholderTree({ plant, ownership, onClose }) {
   }, [ownership]);
 
   return (
-    <div className="tree-overlay" role="dialog" aria-modal="true" aria-labelledby="tree-title">
+    <div ref={dialogRef} className="tree-overlay" role="dialog" aria-modal="true" aria-labelledby="tree-title">
       <div className="tree-window">
         {/* Header Block */}
         <header className="tree-header">

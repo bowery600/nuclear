@@ -1,4 +1,4 @@
-import { Archive, Command, Loader2, MapPin, Factory, Newspaper, Search } from "lucide-react";
+import { Archive, Command, HelpCircle, Loader2, MapPin, Factory, Newspaper, Search } from "lucide-react";
 
 const TABS = [
   { id: "map",      label: "MAP" },
@@ -19,7 +19,7 @@ export default function TopRail({
         </div>
         <div>
           <p className="eyebrow">Nuclear Grid</p>
-          <h1>Ownership Map</h1>
+          <h1>Core Trace</h1>
         </div>
       </div>
 
@@ -46,6 +46,15 @@ export default function TopRail({
           aria-label="News feed"
         >
           <Newspaper size={14} /><span>NEWS</span>
+        </button>
+        <button
+          type="button"
+          className={overlay === "help" ? "active" : ""}
+          onClick={() => onToggleOverlay?.("help")}
+          title="Read me and help"
+          aria-label="Read me and help"
+        >
+          <HelpCircle size={14} /><span>HELP</span>
         </button>
         <button
           type="button"

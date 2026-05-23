@@ -1,6 +1,20 @@
 import { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { feature } from "topojson-client";
-import { Leaf } from "lucide-react";
+import {
+  BarChart3,
+  Crosshair,
+  Gauge,
+  Grid3X3,
+  Layers3,
+  Loader2,
+  LocateFixed,
+  RadioTower,
+  Route,
+  Satellite,
+  Thermometer,
+  ZoomIn,
+  ZoomOut
+} from "lucide-react";
 import { geoGraticule } from "d3-geo";
 import statesTopo from "us-atlas/states-10m.json";
 import isoRegions from "./iso-regions.json";
@@ -22,7 +36,7 @@ const statesFc = feature(statesTopo, statesTopo.objects.states);
 const nationFc = feature(statesTopo, statesTopo.objects.nation);
 
 function formatDMS(deg, isLat) {
-  if (!deg && deg !== 0) return "—";
+  if (!deg && deg !== 0) return "--";
   const absolute = Math.abs(deg);
   const degrees = Math.floor(absolute);
   const minutesNotTruncated = (absolute - degrees) * 60;
@@ -36,7 +50,7 @@ function formatDMS(deg, isLat) {
     direction = deg >= 0 ? "E" : "W";
   }
 
-  return `${degrees}° ${minutes}' ${seconds}" ${direction}`;
+  return `${degrees} deg ${minutes}' ${seconds}" ${direction}`;
 }
 
 function useContainerSize(ref) {
@@ -74,7 +88,9 @@ export default function NuclearMap({
   const [showGrid, setShowGrid] = useState(true);
   const [showSMR, setShowSMR] = useState(true);
   const [showFLOW, setShowFLOW] = useState(false);
-  const [hudCollapsed, setHudCollapsed] = useState(false);
+  const [hudCollapsed, setHudCollapsed] = useState(() => {
+    return typeof window !== "undefined" && window.matchMedia("(max-width: 640px)").matches;
+  });
   const [cursorCoords, setCursorCoords] = useState(null);
 
   const features = plants?.features || [];
@@ -448,22 +464,33 @@ export default function NuclearMap({
       )}
 
       <div className={`scada-hud${hudCollapsed ? " collapsed" : ""}`} aria-label="SCADA Telemetry and Map Controls">
-        <div className="scada-hud-header" onClick={() => setHudCollapsed(!hudCollapsed)}>
-          <span>📡 SCADA Instrument HUD</span>
+        <button
+          type="button"
+          className="scada-hud-header"
+          onClick={() => setHudCollapsed(!hudCollapsed)}
+          aria-expanded={!hudCollapsed}
+          aria-controls="scada-hud-body"
+        >
+          <span><RadioTower size={12} aria-hidden="true" /> SCADA Instrument HUD</span>
           <span>{hudCollapsed ? "[EXPAND]" : "[HIDE]"}</span>
-        </div>
+        </button>
 
-        <div className="scada-hud-body">
+        <div
+          id="scada-hud-body"
+          className="scada-hud-body"
+          aria-hidden={hudCollapsed}
+          inert={hudCollapsed ? "" : undefined}
+        >
           {/* Coordinates HUD */}
           <div className="scada-hud-section">
-            <h4 className="scada-section-title">🛰️ Target Telemetry</h4>
+            <h4 className="scada-section-title"><span><Satellite size={12} aria-hidden="true" /> Target Telemetry</span></h4>
             <div className="scada-telemetry-row">
               <span className="scada-telemetry-label">Latitude</span>
-              <span className="scada-telemetry-value cyan">{cursorCoords ? formatDMS(cursorCoords.lat, true) : "——"}</span>
+              <span className="scada-telemetry-value cyan">{cursorCoords ? formatDMS(cursorCoords.lat, true) : "--"}</span>
             </div>
             <div className="scada-telemetry-row">
               <span className="scada-telemetry-label">Longitude</span>
-              <span className="scada-telemetry-value cyan">{cursorCoords ? formatDMS(cursorCoords.lon, false) : "——"}</span>
+              <span className="scada-telemetry-value cyan">{cursorCoords ? formatDMS(cursorCoords.lon, false) : "--"}</span>
             </div>
             <div className="scada-telemetry-row">
               <span className="scada-telemetry-label">Scale Factor</span>
@@ -473,7 +500,7 @@ export default function NuclearMap({
 
           {/* Operational overview stats */}
           <div className="scada-hud-section">
-            <h4 className="scada-section-title">📊 Fleet Overview</h4>
+            <h4 className="scada-section-title"><span><BarChart3 size={12} aria-hidden="true" /> Fleet Overview</span></h4>
             <div className="scada-telemetry-row">
               <span className="scada-telemetry-label">Active Sites</span>
               <span className="scada-telemetry-value green">{plants?.filter?.(f => f.properties?.timelineStatus !== "Decommissioned").length || projectedPlants.filter(p => p.feature.properties?.timelineStatus !== "Decommissioned").length}</span>
@@ -486,49 +513,53 @@ export default function NuclearMap({
 
           {/* Layer Telemetry Controls */}
           <div className="scada-hud-section">
-            <h4 className="scada-section-title">🎛️ Layer Telemetry</h4>
+            <h4 className="scada-section-title"><span><Layers3 size={12} aria-hidden="true" /> Layer Telemetry</span></h4>
             <button
               className={`scada-toggle-btn${showGrid ? " active" : ""}`}
               onClick={() => setShowGrid(!showGrid)}
+              aria-pressed={showGrid}
             >
-              <span>Grid Graticules</span>
+              <span><Grid3X3 size={12} aria-hidden="true" /> Grid Graticules</span>
               <div className="scada-toggle-indicator" />
             </button>
             <button
               className={`scada-toggle-btn${showThermal ? " active" : ""}`}
               onClick={() => setShowThermal(!showThermal)}
+              aria-pressed={showThermal}
             >
-              <span>Cooling + Thermal Flow</span>
+              <span><Thermometer size={12} aria-hidden="true" /> Cooling + Thermal Flow</span>
               <div className="scada-toggle-indicator" />
             </button>
             <button
               className={`scada-toggle-btn${showSMR ? " active" : ""}`}
               onClick={() => setShowSMR(!showSMR)}
+              aria-pressed={showSMR}
             >
-              <span>SMR Node Sites</span>
+              <span><Gauge size={12} aria-hidden="true" /> SMR Node Sites</span>
               <div className="scada-toggle-indicator" />
             </button>
             <button
               className={`scada-toggle-btn${showFLOW ? " active" : ""}`}
               onClick={() => setShowFLOW(!showFLOW)}
+              aria-pressed={showFLOW}
             >
-              <span>Ownership Flow</span>
+              <span><Route size={12} aria-hidden="true" /> Ownership Flow</span>
               <div className="scada-toggle-indicator" />
             </button>
           </div>
 
           {/* Programmable Actions */}
           <div className="scada-hud-section">
-            <h4 className="scada-section-title">🕹️ SCADA NAV SYSTEM</h4>
+            <h4 className="scada-section-title"><span><Crosshair size={12} aria-hidden="true" /> SCADA Nav System</span></h4>
             <div className="scada-action-grid">
-              <button className="scada-action-btn" onClick={() => zoomIn()} title="Zoom In">
-                <span>[+]</span>
+              <button className="scada-action-btn" onClick={() => zoomIn()} title="Zoom In" aria-label="Zoom in">
+                <ZoomIn size={14} aria-hidden="true" />
               </button>
-              <button className="scada-action-btn" onClick={() => zoomOut()} title="Zoom Out">
-                <span>[-]</span>
+              <button className="scada-action-btn" onClick={() => zoomOut()} title="Zoom Out" aria-label="Zoom out">
+                <ZoomOut size={14} aria-hidden="true" />
               </button>
-              <button className="scada-action-btn" onClick={handleResetRegion} title="Reset View">
-                <span>[⌖]</span>
+              <button className="scada-action-btn" onClick={handleResetRegion} title="Reset View" aria-label="Reset map view">
+                <LocateFixed size={14} aria-hidden="true" />
               </button>
             </div>
           </div>
@@ -571,7 +602,12 @@ export default function NuclearMap({
       {smrTooltipPos && <SmrTooltip site={hoveredSmr} x={smrTooltipPos.x} y={smrTooltipPos.y} />}
 
       {show3DOverlay && selectedPlant && (
-        <Suspense fallback={null}>
+        <Suspense fallback={
+          <div className="three-loading" role="status" aria-live="polite">
+            <Loader2 size={18} className="spin" aria-hidden="true" />
+            <span>Loading 3D Core Inspector</span>
+          </div>
+        }>
           <ThreeReactorOverlay
             plant={selectedPlant}
             onClose={() => setShow3DOverlay(false)}

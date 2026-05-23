@@ -1,6 +1,7 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { ExternalLink, Loader2, TrendingDown, TrendingUp, X } from "lucide-react";
 import { EQUITIES, plantsForEquity } from "../data/equitiesSeed";
+import { useDialogFocus } from "../hooks/useDialogFocus";
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "";
 const RANGES = [
@@ -78,6 +79,7 @@ function HistoryChart({ points, positive }) {
 }
 
 export default function TickerDetailDrawer({ symbol, plants, onClose, onHighlightTicker }) {
+  const drawerRef = useRef(null);
   const [quote, setQuote] = useState(null);
   const [quoteStatus, setQuoteStatus] = useState("loading");
   const [rangeIndex, setRangeIndex] = useState(1);
@@ -86,6 +88,7 @@ export default function TickerDetailDrawer({ symbol, plants, onClose, onHighligh
 
   const normalizedSymbol = symbol?.toUpperCase();
   const rangeConfig = RANGES[rangeIndex];
+  useDialogFocus(drawerRef, onClose, { initialFocus: ".overlay-icon-btn" });
 
   useEffect(() => {
     if (!normalizedSymbol) return;
@@ -146,14 +149,6 @@ export default function TickerDetailDrawer({ symbol, plants, onClose, onHighligh
     return () => controller.abort();
   }, [normalizedSymbol, rangeConfig.range, rangeConfig.interval]);
 
-  useEffect(() => {
-    function handleKeyDown(event) {
-      if (event.key === "Escape") onClose();
-    }
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [onClose]);
-
   const relatedPlants = useMemo(() => {
     const equity = EQUITIES.find((item) => item.ticker === normalizedSymbol);
     const byCompanyKey = equity ? plantsForEquity(equity, plants) : [];
@@ -172,11 +167,17 @@ export default function TickerDetailDrawer({ symbol, plants, onClose, onHighligh
   const companyName = quote?.name || EQUITIES.find((item) => item.ticker === normalizedSymbol)?.name || normalizedSymbol;
 
   return (
-    <aside className="ticker-detail-drawer" role="dialog" aria-label={`${normalizedSymbol} market details`}>
+    <aside
+      ref={drawerRef}
+      className="ticker-detail-drawer"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="ticker-detail-title"
+    >
       <header className="ticker-detail-header">
         <div>
           <p className="news-eyebrow">Market Detail</p>
-          <h2>{normalizedSymbol}</h2>
+          <h2 id="ticker-detail-title">{normalizedSymbol}</h2>
           <span>{companyName}</span>
         </div>
         <button className="overlay-icon-btn" type="button" onClick={onClose} aria-label="Close ticker detail">
@@ -196,6 +197,10 @@ export default function TickerDetailDrawer({ symbol, plants, onClose, onHighligh
           {quoteStatus === "loading" ? "Loading live quote..." : `${quote?.source || "Market source"} as of ${formatTime(quote?.market_time)}`}
         </small>
       </section>
+
+      <p className="market-disclaimer">
+        Educational market context only. Quotes and history depend on public provider availability and are not investment advice.
+      </p>
 
       <section className="ticker-stat-grid" aria-label="Quote statistics">
         <div><span>Prev Close</span><strong>{formatMoney(quote?.previous_close)}</strong></div>
