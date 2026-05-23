@@ -2,12 +2,15 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { feature } from "topojson-client";
 import statesTopo from "us-atlas/states-10m.json";
 import isoRegions from "./iso-regions.json";
+import smrSitesData from "../data/smr_sites.json";
 import { createProjection, projectPlant, bboxOfFeatures } from "./projection";
 import { aggregateLmpByIso, bboxOfPath } from "./isoData";
 import { colorForIsoHeatmap } from "./colors";
 import { useZoom } from "./useZoom";
 import PlantNode from "./PlantNode";
+import SmrNode from "./SmrNode";
 import PlantTooltip from "./PlantTooltip";
+import SmrTooltip from "./SmrTooltip";
 import RegionChips from "./RegionChips";
 
 const statesFc = feature(statesTopo, statesTopo.objects.states);
@@ -43,6 +46,7 @@ export default function NuclearMap({ plants, selectedPlant, onSelect, metricMode
 
   const { svgRef, transform, animateToBounds, resetZoom } = useZoom({ width, height });
   const [hoveredPlant, setHoveredPlant] = useState(null);
+  const [hoveredSmr, setHoveredSmr] = useState(null);
   const [activeRegion, setActiveRegion] = useState(null);
 
   const lmpByIso = useMemo(() => aggregateLmpByIso(features), [features]);
@@ -57,6 +61,17 @@ export default function NuclearMap({ plants, selectedPlant, onSelect, metricMode
       })
       .filter(Boolean);
   }, [features, projection]);
+
+  const projectedSmrs = useMemo(() => {
+    if (!projection) return [];
+    return smrSitesData
+      .map((site) => {
+        const p = projection([site.lon, site.lat]);
+        if (!p || !Number.isFinite(p[0]) || !Number.isFinite(p[1])) return null;
+        return { site, x: p[0], y: p[1] };
+      })
+      .filter(Boolean);
+  }, [projection]);
 
   const selectedId = selectedPlant?.properties?.id ?? selectedPlant?.id ?? null;
 
@@ -151,6 +166,15 @@ export default function NuclearMap({ plants, selectedPlant, onSelect, metricMode
     const screenY = transform.y + p[1] * transform.k;
     return { x: screenX + 14, y: screenY - 18 };
   }, [hoveredPlant, projection, transform]);
+
+  const smrTooltipPos = useMemo(() => {
+    if (!hoveredSmr || !projection) return null;
+    const p = projection([hoveredSmr.lon, hoveredSmr.lat]);
+    if (!p) return null;
+    const screenX = transform.x + p[0] * transform.k;
+    const screenY = transform.y + p[1] * transform.k;
+    return { x: screenX + 14, y: screenY - 18 };
+  }, [hoveredSmr, projection, transform]);
 
   return (
     <div className="nuclear-map" ref={containerRef}>
@@ -260,6 +284,20 @@ export default function NuclearMap({ plants, selectedPlant, onSelect, metricMode
               </g>
             )}
 
+            <g className="smr-layer">
+              {projectedSmrs.map(({ site, x, y }) => (
+                <SmrNode
+                  key={site.site_id}
+                  site={site}
+                  x={x}
+                  y={y}
+                  scale={transform.k}
+                  onHover={setHoveredSmr}
+                  onLeave={() => setHoveredSmr(null)}
+                />
+              ))}
+            </g>
+
             <g className="plant-nodes">
               {projectedPlants.map(({ feature: f, x, y }) => {
                 const fid = f.properties?.id ?? f.id;
@@ -291,6 +329,7 @@ export default function NuclearMap({ plants, selectedPlant, onSelect, metricMode
       />
 
       {tooltipPos && <PlantTooltip plant={hoveredPlant} x={tooltipPos.x} y={tooltipPos.y} />}
+      {smrTooltipPos && <SmrTooltip site={hoveredSmr} x={smrTooltipPos.x} y={smrTooltipPos.y} />}
     </div>
   );
 }
