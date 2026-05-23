@@ -1865,7 +1865,7 @@ input[type="search"] {
 .timeline-panel {
   position: absolute;
   z-index: 22;
-  left: calc((100% - var(--side-panel-w)) / 2);
+  left: calc((100% - var(--side-panel-w)) / 2 + 42px);
   bottom: 80px;
   transform: translateX(-50%);
   width: min(620px, calc(100% - var(--side-panel-w) - 36px));
