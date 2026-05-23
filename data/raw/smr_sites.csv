@@ -1,0 +1,11 @@
+site_id,site_name,state,lat,lon,vendor,reactor_model,owner,offtaker,module_count,capacity_mwe_total,phase,target_cod,nrc_docket,source_url
+tva-clinch-river,Clinch River Site,TN,35.9094,-84.3878,GE Hitachi,BWRX-300,Tennessee Valley Authority,,1,300,nrc_engaged,2032,52-049,https://www.nrc.gov/reactors/new-reactors/smr/licensing-activities/clinch-river.html
+dow-seadrift,Dow Seadrift,TX,28.4203,-96.7100,X-energy,Xe-100,Dow Chemical,Dow Chemical,4,320,nrc_engaged,2030,,https://www.energy.gov/ne/articles/x-energy-and-dow-submit-construction-permit-application-advanced-nuclear
+energy-northwest-xe100,Energy Northwest Xe-100,WA,46.4710,-119.3320,X-energy,Xe-100,Energy Northwest,Amazon Web Services,12,960,announced,2032,,https://www.energy-northwest.com/newsroom/Pages/X-Energy-Project.aspx
+pacificorp-kemmerer,TerraPower Natrium Kemmerer,WY,41.8276,-110.5366,TerraPower,Natrium,PacifiCorp,PacifiCorp,1,345,under_construction,2030,,https://www.terrapower.com/our-work/natriumpower/
+holtec-palisades,Holtec Palisades SMR-300,MI,42.3239,-86.3151,Holtec,SMR-300,Holtec International,,2,600,announced,2030,,https://holtecinternational.com/products-and-services/smr/
+oklo-idaho,Oklo Aurora INL,ID,43.5167,-112.9533,Oklo,Aurora,Oklo Inc.,,1,15,nrc_engaged,2027,52-048,https://www.nrc.gov/reactors/new-reactors/smr/licensing-activities/aurora.html
+kairos-hermes,Kairos Hermes,TN,35.9233,-84.3120,Kairos,KP-FHR,Kairos Power,Tennessee Valley Authority,1,35,under_construction,2027,50-7513,https://www.nrc.gov/reactors/non-power/new-fac/kairos-hermes.html
+last-energy-haskell,Last Energy Haskell County,TX,33.1577,-99.7333,Last Energy,PWR-20,Last Energy,,4,80,announced,2027,,https://www.lastenergy.com/news/last-energy-texas
+ge-hitachi-darlington-style-ny,GE Hitachi BWRX-300 NY Pilot,NY,43.5230,-76.0980,GE Hitachi,BWRX-300,New York Power Authority,,1,300,announced,2033,,https://www.nypa.gov/news/press-releases
+westinghouse-ap300-pilot,Westinghouse AP300 Pilot Site,VA,37.7960,-78.1340,Westinghouse,AP300,Dominion Energy,Dominion Energy,1,300,announced,2032,,https://www.westinghousenuclear.com/energy-systems/ap300-smr
