@@ -302,31 +302,35 @@ function TopRail({ query, setQuery, metricMode, setMetricMode, visibleCount, sta
         </div>
       </div>
 
-      <label className="search-box">
+      <label className="search-box" htmlFor="plant-search">
         <Search size={18} aria-hidden="true" />
         <span className="sr-only">Search plants, owners, states, or markets</span>
         <input
+          id="plant-search"
+          type="search"
           value={query}
           onChange={(event) => setQuery(event.target.value)}
           placeholder="Search plants, owners, states"
         />
       </label>
 
-      <div className="rail-actions" aria-label="Map metric color">
+      <div className="rail-actions" role="group" aria-label="Map metric color">
         <button
           className={metricMode === "output" ? "active" : ""}
           type="button"
+          aria-pressed={metricMode === "output"}
           onClick={() => setMetricMode("output")}
         >
-          <Zap size={16} />
+          <Zap size={16} aria-hidden="true" />
           Output
         </button>
         <button
           className={metricMode === "price" ? "active" : ""}
           type="button"
+          aria-pressed={metricMode === "price"}
           onClick={() => setMetricMode("price")}
         >
-          <DollarSign size={16} />
+          <DollarSign size={16} aria-hidden="true" />
           Price
         </button>
       </div>
@@ -364,8 +368,10 @@ function MetricStrip({ stats, status, error }) {
     }
   ];
 
+  const isLoading = status === "loading" && !error;
+
   return (
-    <aside className="metric-strip" aria-label="Fleet metrics">
+    <aside className="metric-strip" aria-label="Fleet metrics" aria-busy={isLoading}>
       {metrics.map((metric) => {
         const Icon = metric.icon;
         return (
@@ -373,7 +379,13 @@ function MetricStrip({ stats, status, error }) {
             <Icon size={18} aria-hidden="true" />
             <div>
               <span>{metric.label}</span>
-              <strong>{status === "loading" && !error ? "Loading" : metric.value}</strong>
+              <strong>
+                {isLoading ? (
+                  <span className="skeleton-pill" aria-hidden="true" />
+                ) : (
+                  metric.value
+                )}
+              </strong>
             </div>
           </div>
         );
@@ -396,7 +408,7 @@ function OwnershipPanel({ plant, ownership, status, error, onClose }) {
   );
 
   return (
-    <aside className={`side-panel ${plant ? "open" : ""}`} aria-live="polite">
+    <aside className="side-panel" aria-label="Plant details" aria-busy={status === "loading"}>
       {plant ? (
         <>
           <div className="panel-header">
@@ -458,15 +470,15 @@ function OwnershipPanel({ plant, ownership, status, error, onClose }) {
             </div>
 
             {status === "loading" && (
-              <div className="loading-row">
-                <Loader2 size={17} className="spin" />
+              <div className="loading-row" role="status" aria-live="polite">
+                <Loader2 size={17} className="spin" aria-hidden="true" />
                 Loading ownership
               </div>
             )}
 
             {status === "error" && (
               <div className="inline-alert" role="alert">
-                <AlertCircle size={17} />
+                <AlertCircle size={17} aria-hidden="true" />
                 {error}
               </div>
             )}

@@ -23,12 +23,29 @@ function PlantNodeImpl({ plant, x, y, metricMode, selected, onHover, onLeave, on
   const pulseAmplitude = 0.4 + outputRatio * 0.9;
   const pulseDuration = 2.4 - outputRatio * 0.9;
 
+  const label = [props.plant_name, props.state].filter(Boolean).join(", ") || "Plant";
+
+  const handleKeyDown = (event) => {
+    if (event.key === "Enter" || event.key === " ") {
+      event.preventDefault();
+      event.stopPropagation();
+      onSelect?.(plant);
+    }
+  };
+
   return (
     <g
       className={`plant-node${selected ? " is-selected" : ""}`}
       transform={`translate(${x}, ${y}) scale(${invScale})`}
+      tabIndex={0}
+      role="button"
+      aria-label={label}
+      aria-pressed={selected}
       onMouseEnter={() => onHover?.(plant)}
       onMouseLeave={() => onLeave?.(plant)}
+      onFocus={() => onHover?.(plant)}
+      onBlur={() => onLeave?.(plant)}
+      onKeyDown={handleKeyDown}
       onClick={(event) => {
         event.stopPropagation();
         onSelect?.(plant);
