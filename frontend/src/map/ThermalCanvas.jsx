@@ -1,6 +1,6 @@
 import { useEffect, useRef } from "react";
 
-export default function ThermalCanvas({ width, height, transform, projectedPlants, show }) {
+export default function ThermalCanvas({ width, height, transform, projectedPlants, selectedPlantId, show }) {
   const canvasRef = useRef(null);
 
   useEffect(() => {
@@ -42,7 +42,12 @@ export default function ThermalCanvas({ width, height, transform, projectedPlant
       ctx.clearRect(0, 0, width, height);
       time += 0.05;
 
-      projectedPlants.forEach((p) => {
+      const selectedPlants = projectedPlants.filter((p) => {
+        const id = p.feature?.properties?.id ?? p.feature?.id;
+        return String(id) === String(selectedPlantId);
+      });
+
+      selectedPlants.forEach((p) => {
         const props = p.feature.properties || {};
         const isDecommissioned = props.timelineStatus === "Decommissioned";
         const isConstruction = props.timelineStatus === "Construction";
@@ -70,25 +75,31 @@ export default function ThermalCanvas({ width, height, transform, projectedPlant
         // 1. Draw Simulated Localized Cooling Water Sources
         ctx.save();
         if (coolingType === "river") {
-          // Draw a flowing river ribbon passing near the plant
+          // Draw a connected cooling-water path through the selected plant.
           ctx.beginPath();
           ctx.lineWidth = Math.max(2, 4 * k);
           ctx.strokeStyle = "rgba(0, 212, 255, 0.28)";
           ctx.shadowColor = "rgba(0, 212, 255, 0.4)";
           ctx.shadowBlur = Math.max(2, 6 * k);
 
-          // Standard river curve near the plant
-          const startX = screenX - 50 * k;
-          const startY = screenY + 25 * k;
-          const cp1x = screenX - 10 * k;
-          const cp1y = screenY - 20 * k;
-          const cp2x = screenX + 15 * k;
-          const cp2y = screenY + 45 * k;
-          const endX = screenX + 60 * k;
-          const endY = screenY - 10 * k;
+          const startX = screenX - 64 * k;
+          const startY = screenY + 18 * k;
+          const cp1x = screenX - 28 * k;
+          const cp1y = screenY - 18 * k;
+          const cp2x = screenX - 12 * k;
+          const cp2y = screenY - 6 * k;
+          const plantInletX = screenX;
+          const plantInletY = screenY;
+          const cp3x = screenX + 12 * k;
+          const cp3y = screenY + 6 * k;
+          const cp4x = screenX + 32 * k;
+          const cp4y = screenY + 20 * k;
+          const endX = screenX + 70 * k;
+          const endY = screenY - 14 * k;
 
           ctx.moveTo(startX, startY);
-          ctx.bezierCurveTo(cp1x, cp1y, cp2x, cp2y, endX, endY);
+          ctx.bezierCurveTo(cp1x, cp1y, cp2x, cp2y, plantInletX, plantInletY);
+          ctx.bezierCurveTo(cp3x, cp3y, cp4x, cp4y, endX, endY);
           ctx.stroke();
 
           // Flowing water dashes overlay representing active current
@@ -98,14 +109,15 @@ export default function ThermalCanvas({ width, height, transform, projectedPlant
           ctx.setLineDash([12 * k, 35 * k]);
           ctx.lineDashOffset = -time * 8 * k;
           ctx.moveTo(startX, startY);
-          ctx.bezierCurveTo(cp1x, cp1y, cp2x, cp2y, endX, endY);
+          ctx.bezierCurveTo(cp1x, cp1y, cp2x, cp2y, plantInletX, plantInletY);
+          ctx.bezierCurveTo(cp3x, cp3y, cp4x, cp4y, endX, endY);
           ctx.stroke();
         } else {
-          // Draw a lake shore or circular reservoir near the plant
+          // Draw a connected lake/reservoir interface centered on the selected plant.
           ctx.beginPath();
           const lakeRadius = Math.max(14, 26 * k);
-          const lakeCX = screenX + 22 * k;
-          const lakeCY = screenY + 22 * k;
+          const lakeCX = screenX + 14 * k;
+          const lakeCY = screenY + 14 * k;
           
           ctx.arc(lakeCX, lakeCY, lakeRadius, 0, Math.PI * 2);
           ctx.fillStyle = "rgba(0, 140, 235, 0.08)";
@@ -134,9 +146,9 @@ export default function ThermalCanvas({ width, height, transform, projectedPlant
           const pulseOffset = Math.sin(time * 1.6) * 3 * k;
           const activeRadius = Math.max(4, plumeMaxRadius + pulseOffset);
 
-          // Thermal discharge origin point near the river/lake junction
-          const originX = coolingType === "river" ? screenX + 2 * k : screenX + 12 * k;
-          const originY = coolingType === "river" ? screenY + 12 * k : screenY + 12 * k;
+          // Thermal discharge originates from the selected plant node.
+          const originX = screenX;
+          const originY = screenY;
 
           // Glowing radial gradient: Magenta/Violet (hot discharge) fading to blue/transparent (cooling)
           const grad = ctx.createRadialGradient(
@@ -203,7 +215,7 @@ export default function ThermalCanvas({ width, height, transform, projectedPlant
     return () => {
       cancelAnimationFrame(animationId);
     };
-  }, [show, width, height, transform, projectedPlants]);
+  }, [show, width, height, transform, projectedPlants, selectedPlantId]);
 
   if (!show) return null;
 

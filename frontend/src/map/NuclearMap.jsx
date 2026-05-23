@@ -407,7 +407,8 @@ export default function NuclearMap({
         height={height || 0}
         transform={transform}
         projectedPlants={projectedPlants}
-        show={showThermal}
+        selectedPlantId={selectedId}
+        show={showThermal && selectedId !== null}
       />
 
       <div className={`scada-hud${hudCollapsed ? " collapsed" : ""}`} aria-label="SCADA Telemetry and Map Controls">
@@ -461,7 +462,7 @@ export default function NuclearMap({
               className={`scada-toggle-btn${showThermal ? " active" : ""}`}
               onClick={() => setShowThermal(!showThermal)}
             >
-              <span>Env Shading (Canvas)</span>
+              <span>Selected Plant Flow</span>
               <div className="scada-toggle-indicator" />
             </button>
             <button
