@@ -1865,10 +1865,9 @@ input[type="search"] {
 .timeline-panel {
   position: absolute;
   z-index: 22;
-  left: calc((100% - var(--side-panel-w)) / 2 + 120px);
+  right: calc(var(--side-panel-w) + 18px);
   bottom: 80px;
-  transform: translateX(-50%);
-  width: min(620px, calc(100% - var(--side-panel-w) - 36px));
+  width: min(540px, calc(100% - var(--side-panel-w) - 52px));
   background: var(--bg-1);
   border: 1px solid var(--line-2);
   padding: 10px 14px;
@@ -1964,6 +1963,10 @@ input[type="search"] {
   gap: 4px;
   font-size: 11px;
   color: var(--t-2);
+}
+
+.timeline-stats-preview span {
+  display: none;
 }
 
 .glowing-year {
@@ -2083,7 +2086,9 @@ input[type="search"] {
 }
 
 .timeline-title-group h3 {
-  flex: 0 0 auto;
+  flex: 0 1 auto;
+  max-width: 190px;
+  min-width: 0;
   margin: 0;
   font-family: var(--font-mono);
   font-size: 11px;
@@ -2091,6 +2096,9 @@ input[type="search"] {
   color: var(--t-0);
   letter-spacing: 0.1em;
   text-transform: uppercase;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .timeline-btn.play-btn.playing {
