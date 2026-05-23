@@ -14,7 +14,6 @@ import {
   Loader2,
   MapPin,
   Percent,
-  Search,
   Sliders,
   Trees,
   TrendingUp,
@@ -26,7 +25,10 @@ import StakeholderTree from "./map/StakeholderTree";
 import { getHistoricalPlantProperties } from "./data/historicalTimeline";
 import TimelineSlider from "./map/TimelineSlider";
 import TickerRail from "./map/TickerRail";
+import TopRail from "./map/TopRail";
 import { getPlantStatusDetails } from "./map/colors";
+import NuclearHistory from "./map/NuclearHistory";
+import Odometer from "./map/Odometer";
 
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "";
@@ -204,17 +206,16 @@ function RollingCounter({ currentOutput, fuel = "grid", inline = false }) {
   }).format(count);
 
   if (inline) {
-    return <span className="rolling-counter-value">{formattedCount}</span>;
+    return <Odometer value={formattedCount} theme="green" inline />;
   }
 
   return (
     <div className="rolling-counter-display">
-      <span className="rolling-counter-value">{formattedCount}</span>
+      <Odometer value={formattedCount} theme="green" />
       <span className="rolling-counter-unit">Tons</span>
     </div>
   );
 }
-
 function App() {
   const { plants, status, error } = usePlants();
   const [query, setQuery] = useState("");
@@ -227,6 +228,18 @@ function App() {
   const [showTree, setShowTree] = useState(false);
   const [replacementFuel, setReplacementFuel] = useState("grid");
   const [timelineYear, setTimelineYear] = useState(2026);
+  const [showHistory, setShowHistory] = useState(false);
+
+  // States for 3D reactor overlays and manual power factor overrides
+  const [plantOverrides, setPlantOverrides] = useState({});
+  const [show3DOverlay, setShow3DOverlay] = useState(false);
+
+  const handleUpdatePlantMetrics = useCallback((plantId, capacityPercent, mwOutput) => {
+    setPlantOverrides((prev) => ({
+      ...prev,
+      [plantId]: { capacity_percentage: capacityPercent, current_mw_output: mwOutput }
+    }));
+  }, []);
 
   useEffect(() => {
     if (status !== "ready") return;
@@ -263,9 +276,14 @@ function App() {
           // By adding timelineYear into the hash, refueling outages cycle realistically as you slide the timeline!
           const isDeterministicRefueling = props.timelineStatus === "Active" && ((plantId + timelineYear) % 13 === 0);
 
+          const override = plantOverrides[plantId];
+
           let nextOutput = currentOutput;
           let nextPercent = props.capacity_percentage;
-          if (isDeterministicRefueling) {
+          if (override !== undefined) {
+            nextOutput = override.current_mw_output;
+            nextPercent = override.capacity_percentage;
+          } else if (isDeterministicRefueling) {
             nextOutput = 0;
             nextPercent = 0;
           } else if (props.timelineStatus === "Active" && currentOutput !== null && capacity !== null) {
@@ -298,7 +316,7 @@ function App() {
         })
         .filter(Boolean),
     };
-  }, [plants, fluctuationFactor, timelineYear]);
+  }, [plants, fluctuationFactor, timelineYear, plantOverrides]);
 
   const activeSelectedPlant = useMemo(() => {
     if (!selectedPlant) return null;
@@ -428,16 +446,18 @@ function App() {
           selectedPlant={activeSelectedPlant}
           onSelect={selectPlant}
           metricMode={metricMode}
+          onUpdatePlantMetrics={handleUpdatePlantMetrics}
+          show3DOverlay={show3DOverlay}
+          setShow3DOverlay={setShow3DOverlay}
         />
 
         <TopRail
           query={query}
           setQuery={setQuery}
-          metricMode={metricMode}
-          setMetricMode={setMetricMode}
           visibleCount={filteredPlants.features.length}
           status={status}
           activeYear={timelineYear}
+          onShowHistory={() => setShowHistory(true)}
         />
 
         <TickerRail plants={animatedPlants} />
@@ -472,6 +492,7 @@ function App() {
         onVisualizeTree={() => setShowTree(true)}
         replacementFuel={replacementFuel}
         timelineYear={timelineYear}
+        onInspectCore={() => setShow3DOverlay(true)}
       />
 
       {showTree && activeSelectedPlant && ownership && (
@@ -481,66 +502,11 @@ function App() {
           onClose={() => setShowTree(false)}
         />
       )}
+
+      {showHistory && (
+        <NuclearHistory onClose={() => setShowHistory(false)} />
+      )}
     </main>
-  );
-}
-
-function TopRail({ query, setQuery, metricMode, setMetricMode, visibleCount, status, activeYear }) {
-  return (
-    <header className="top-rail">
-      <div className="brand-block">
-        <div className="brand-mark" aria-hidden="true">
-          <Factory size={21} />
-        </div>
-        <div>
-          <p className="eyebrow">Nuclear Grid</p>
-          <h1>Ownership Map</h1>
-        </div>
-      </div>
-
-      <label className="search-box" htmlFor="plant-search">
-        <Search size={18} aria-hidden="true" />
-        <span className="sr-only">Search plants, owners, states, or markets</span>
-        <input
-          id="plant-search"
-          type="search"
-          value={query}
-          onChange={(event) => setQuery(event.target.value)}
-          placeholder="Search plants, owners, states"
-        />
-      </label>
-
-      <div className="rail-actions" role="group" aria-label="Map metric color">
-        <button
-          className={metricMode === "output" ? "active" : ""}
-          type="button"
-          aria-pressed={metricMode === "output"}
-          onClick={() => setMetricMode("output")}
-        >
-          <Zap size={16} aria-hidden="true" />
-          Output
-        </button>
-        <button
-          className={metricMode === "price" ? "active" : ""}
-          type="button"
-          aria-pressed={metricMode === "price"}
-          onClick={() => setMetricMode("price")}
-        >
-          <DollarSign size={16} aria-hidden="true" />
-          Price
-        </button>
-      </div>
-
-      <div className={`live-indicator${activeYear !== 2026 ? " sim-indicator" : ""}`} aria-hidden="true">
-        <span className={activeYear !== 2026 ? "sim-dot" : "live-dot"} />
-        {activeYear !== 2026 ? `HISTORICAL` : "LIVE FEED"}
-      </div>
-
-      <div className="count-pill" aria-live="polite">
-        {status === "loading" ? <Loader2 size={15} className="spin" /> : <MapPin size={15} />}
-        {visibleCount} sites
-      </div>
-    </header>
   );
 }
 
@@ -549,23 +515,20 @@ function MetricStrip({ stats, status, error, replacementFuel, setReplacementFuel
     {
       icon: Factory,
       label: "Operating Sites",
-      value: status === "error" ? "--" : formatNumber(stats.plantCount)
+      value: status === "error" ? "--" : formatNumber(stats.plantCount),
+      theme: "white"
     },
     {
       icon: Zap,
       label: "Live Output",
-      value: `${formatNumber(stats.currentOutput)} MW`
+      value: status === "error" ? "--" : `${formatNumber(stats.currentOutput)} MW`,
+      theme: "amber"
     },
     {
       icon: Activity,
       label: "Seeded Capacity",
-      value: `${formatNumber(stats.totalCapacity)} MW`
-    },
-    {
-      icon: DollarSign,
-      label: "Avg. LMP",
-      value:
-        stats.averagePrice === null ? "Unknown" : `$${formatNumber(stats.averagePrice)}/MWh`
+      value: status === "error" ? "--" : `${formatNumber(stats.totalCapacity)} MW`,
+      theme: "amber"
     }
   ];
 
@@ -584,7 +547,7 @@ function MetricStrip({ stats, status, error, replacementFuel, setReplacementFuel
                 {isLoading ? (
                   <span className="skeleton-pill" aria-hidden="true" />
                 ) : (
-                  metric.value
+                  <Odometer value={metric.value} theme={metric.theme} />
                 )}
               </strong>
             </div>
@@ -635,7 +598,7 @@ function MetricStrip({ stats, status, error, replacementFuel, setReplacementFuel
   );
 }
 
-function OwnershipPanel({ plant, ownership, status, error, onClose, onVisualizeTree, replacementFuel, timelineYear }) {
+function OwnershipPanel({ plant, ownership, status, error, onClose, onVisualizeTree, replacementFuel, timelineYear, onInspectCore }) {
   const props = plant?.properties || {};
   const statusDetails = getPlantStatusDetails(plant);
   const statusType = statusDetails?.type || "baseload";
@@ -731,6 +694,10 @@ function OwnershipPanel({ plant, ownership, status, error, onClose, onVisualizeT
   // Simulated license info
   const simulatedExpiration = currentExpiration + Number(licenseExtension);
   const simulatedRemainingYears = remainingLifespan + Number(licenseExtension);
+
+  // Environmental calculated offset variables for Odometer components
+  const offsetRateVal = ((Number(props.current_mw_output) || 0) * (EMISSION_FACTORS[replacementFuel] || 0.70)).toFixed(2);
+  const annualAvoidedCO2Val = formatNumber((Number(props.total_mw_capacity) || 0) * 8760 * (capacityFactor / 100) * (EMISSION_FACTORS[replacementFuel] || 0.70)) + " Tons / yr";
 
   // Formatting helpers for CapEx Billion/Million
   const formatCapExAmount = (amount) => {
@@ -955,7 +922,7 @@ function OwnershipPanel({ plant, ownership, status, error, onClose, onVisualizeT
                 
                 <div className="lcoe-ticker-wrapper">
                   <div className="lcoe-ticker">
-                    <span className="lcoe-amount">${totalLCOE.toFixed(2)}</span>
+                    <span className="lcoe-amount"><Odometer value={"$" + totalLCOE.toFixed(2)} theme="amber" inline /></span>
                     <span className="lcoe-unit">/ MWh</span>
                   </div>
                   <div className={`depreciation-badge ${isDepreciated ? "depreciated" : "active"}`}>
@@ -1249,7 +1216,7 @@ function OwnershipPanel({ plant, ownership, status, error, onClose, onVisualizeT
                 <div className="lcoe-ticker-wrapper">
                   <div className="lcoe-ticker">
                     <span className="lcoe-amount">
-                      {((Number(props.current_mw_output) || 0) * (EMISSION_FACTORS[replacementFuel] || 0.70)).toFixed(2)}
+                      <Odometer value={offsetRateVal} theme="green" inline />
                     </span>
                     <span className="lcoe-unit">Tons CO₂ / hr</span>
                   </div>
@@ -1258,6 +1225,12 @@ function OwnershipPanel({ plant, ownership, status, error, onClose, onVisualizeT
                     Zero Emissions Output
                   </div>
                 </div>
+                
+                {/* 3D Core Inspector launch button */}
+                <button className="inspect-deck-btn" onClick={onInspectCore} style={{ marginTop: 12 }}>
+                  <Zap size={13} style={{ marginRight: 6 }} />
+                  <span>Launch 3D Core Inspector</span>
+                </button>
               </div>
 
               <div className="divider-line" />
@@ -1271,8 +1244,8 @@ function OwnershipPanel({ plant, ownership, status, error, onClose, onVisualizeT
                       <Leaf size={15} style={{ color: '#10b981' }} />
                       <span>Annual Avoided Emissions</span>
                     </div>
-                    <strong style={{ fontSize: '1.4rem', color: '#10b981', textShadow: '0 0 10px rgba(16, 185, 129, 0.25)' }}>
-                      {formatNumber((Number(props.total_mw_capacity) || 0) * 8760 * (capacityFactor / 100) * (EMISSION_FACTORS[replacementFuel] || 0.70))} Tons / yr
+                    <strong className="annual-avoided-co2-display">
+                      <Odometer value={annualAvoidedCO2Val} theme="green" />
                     </strong>
                     <small>Projected at {capacityFactor}% Capacity Factor & {replacementFuel === 'grid' ? 'Grid Mix' : replacementFuel === 'gas' ? 'Gas' : 'Coal'} replacement</small>
                   </div>
