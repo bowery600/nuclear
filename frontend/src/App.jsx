@@ -25,6 +25,7 @@ import NuclearMap from "./map/NuclearMap";
 import StakeholderTree from "./map/StakeholderTree";
 import { getHistoricalPlantProperties } from "./data/historicalTimeline";
 import TimelineSlider from "./map/TimelineSlider";
+import TickerRail from "./map/TickerRail";
 import { getPlantStatusDetails } from "./map/colors";
 
 
@@ -438,6 +439,8 @@ function App() {
           status={status}
           activeYear={timelineYear}
         />
+
+        <TickerRail plants={animatedPlants} />
 
         <TimelineSlider
           activeYear={timelineYear}

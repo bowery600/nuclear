@@ -23,18 +23,19 @@ function piecewise(stops, value) {
   return stops[stops.length - 1].color;
 }
 
+// Terminal palette: cool (low) -> hot (high). Cyan -> amber -> red.
 const OUTPUT_STOPS = [
-  { at: 0, color: "#60a5fa" },
-  { at: 45, color: "#22d3ee" },
-  { at: 75, color: "#facc15" },
-  { at: 100, color: "#fb7185" }
+  { at: 0,   color: "#005a6e" },
+  { at: 45,  color: "#00d4ff" },
+  { at: 75,  color: "#ff8c00" },
+  { at: 100, color: "#ff3b4e" }
 ];
 
 const PRICE_STOPS = [
-  { at: 0, color: "#22d3ee" },
-  { at: 35, color: "#2dd4bf" },
-  { at: 65, color: "#f59e0b" },
-  { at: 100, color: "#f97316" }
+  { at: 0,   color: "#00d4ff" },
+  { at: 35,  color: "#4ade80" },
+  { at: 65,  color: "#ff8c00" },
+  { at: 100, color: "#ff3b4e" }
 ];
 
 export function colorForOutput(capacityPercent) {
@@ -55,10 +56,9 @@ export function colorForPlant(plant, metricMode) {
 
 export function colorForIsoHeatmap(avgPrice) {
   if (!Number.isFinite(avgPrice)) {
-    return "rgba(148, 163, 184, 0.06)";
+    return "#0a0a0a";
   }
-  const base = colorForPrice(avgPrice);
-  return base;
+  return colorForPrice(avgPrice);
 }
 
 export function getPlantStatusDetails(plant) {
@@ -66,39 +66,37 @@ export function getPlantStatusDetails(plant) {
     return {
       type: "baseload",
       label: "Normal Baseload Operation",
-      color: "#10b981"
+      color: "#4ade80"
     };
   }
   const props = plant.properties || {};
   const status = props.timelineStatus || "Active";
   const capacityPct = Number(props.capacity_percentage) || 0;
 
-
   if (status === "Construction") {
     return {
       type: "construction",
       label: "Under Construction",
-      color: "#38bdf8"
+      color: "#d946ef"
     };
   } else if (status === "Decommissioned") {
     return {
       type: "decommissioned",
       label: "Decommissioned",
-      color: "#64748b"
+      color: "#595959"
     };
   } else {
-    // Active states: check capacity percentage for refueling outages
     if (capacityPct < 15) {
       return {
         type: "refueling",
         label: "Planned Refueling Outage",
-        color: "#fbbf24"
+        color: "#facc15"
       };
     }
     return {
       type: "baseload",
       label: "Normal Baseload Operation",
-      color: "#10b981"
+      color: "#4ade80"
     };
   }
 }

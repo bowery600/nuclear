@@ -186,22 +186,11 @@ export default function NuclearMap({ plants, selectedPlant, onSelect, metricMode
         onClick={handleBackgroundClick}
       >
         <defs>
-          <filter id="plantGlow" x="-60%" y="-60%" width="220%" height="220%">
-            <feGaussianBlur stdDeviation="6" />
+          {/* Stub kept so PlantNode's filter="url(#plantGlow)" still resolves; effectively no-op. */}
+          <filter id="plantGlow" x="-10%" y="-10%" width="120%" height="120%">
+            <feGaussianBlur stdDeviation="0.01" />
           </filter>
-          <filter id="wireGlow" x="-30%" y="-30%" width="160%" height="160%">
-            <feGaussianBlur stdDeviation="2.2" result="blur" />
-            <feMerge>
-              <feMergeNode in="blur" />
-              <feMergeNode in="SourceGraphic" />
-            </feMerge>
-          </filter>
-          <radialGradient id="bgGlow" cx="50%" cy="40%" r="70%">
-            <stop offset="0%" stopColor="#0f172a" stopOpacity="0.0" />
-            <stop offset="100%" stopColor="#020617" stopOpacity="0.6" />
-          </radialGradient>
         </defs>
-        <rect width="100%" height="100%" fill="url(#bgGlow)" />
 
         {projection && path && (
           <g
@@ -213,16 +202,16 @@ export default function NuclearMap({ plants, selectedPlant, onSelect, metricMode
                 const active = activeRegion === region.code;
                 const fill = Number.isFinite(avg)
                   ? colorForIsoHeatmap(avg)
-                  : "rgba(148, 163, 184, 0.05)";
+                  : "#0a0a0a";
                 return (
                   <path
                     key={region.code}
                     d={path(region.feature)}
                     className={`iso-region${active ? " is-active" : ""}`}
                     fill={fill}
-                    fillOpacity={Number.isFinite(avg) ? 0.13 : 0.05}
-                    stroke="rgba(148, 163, 184, 0.25)"
-                    strokeWidth={0.6 / transform.k}
+                    fillOpacity={Number.isFinite(avg) ? 0.08 : 0.4}
+                    stroke="#1f1f1f"
+                    strokeWidth={0.5 / transform.k}
                   />
                 );
               })}
@@ -235,14 +224,14 @@ export default function NuclearMap({ plants, selectedPlant, onSelect, metricMode
                   d={path(state)}
                   className="state-outline"
                   fill="none"
-                  stroke="rgba(226, 232, 240, 0.32)"
-                  strokeWidth={0.6 / transform.k}
+                  stroke="#2a2a2a"
+                  strokeWidth={0.55 / transform.k}
                 />
               ))}
             </g>
 
             {ownershipLines.length > 0 && (
-              <g className="ownership-lines" filter="url(#wireGlow)">
+              <g className="ownership-lines">
                 {ownershipLines.map((line, index) => {
                   const sw = 1.6 / transform.k;
                   const pulseLen = 18 / transform.k;
@@ -256,17 +245,18 @@ export default function NuclearMap({ plants, selectedPlant, onSelect, metricMode
                       <path
                         d={line.d}
                         fill="none"
-                        stroke="rgba(103, 232, 249, 0.55)"
+                        stroke="#ff8c00"
+                        strokeOpacity={0.35}
                         strokeWidth={sw}
-                        strokeLinecap="round"
+                        strokeLinecap="butt"
                       />
                       {/* Traveling current pulse */}
                       <path
                         d={line.d}
                         fill="none"
-                        stroke="#f0fdfa"
-                        strokeWidth={sw * 1.8}
-                        strokeLinecap="round"
+                        stroke="#ff8c00"
+                        strokeWidth={sw * 1.6}
+                        strokeLinecap="butt"
                         strokeDasharray={`${pulseLen} ${gapLen}`}
                       >
                         <animate

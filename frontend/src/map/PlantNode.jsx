@@ -38,9 +38,9 @@ function PlantNodeImpl({ plant, x, y, metricMode, selected, onHover, onLeave, on
   
   let color = colorForPlant(plant, metricMode);
   if (status === "Construction") {
-    color = "#38bdf8"; // Blueprint cyan
+    color = "#d946ef"; // Magenta for planned/construction
   } else if (status === "Decommissioned") {
-    color = "#475569"; // Slate gray
+    color = "#3a3a3a"; // Faint
   }
 
   const { node, glow } = sizeFromCapacity(Number(props.total_mw_capacity));
@@ -146,12 +146,12 @@ function PlantNodeImpl({ plant, x, y, metricMode, selected, onHover, onLeave, on
         className="plant-core"
         d={tower}
         fill={status === "Construction" ? "transparent" : color}
-        fillOpacity={status === "Construction" ? 0 : 0.85}
-        stroke={status === "Construction" ? "#38bdf8" : "#f8fafc"}
-        strokeOpacity={status === "Construction" ? 0.75 : 0.92}
-        strokeWidth={status === "Construction" ? 1.2 : 1}
+        fillOpacity={status === "Construction" ? 0 : 0.95}
+        stroke={status === "Construction" ? "#d946ef" : "#000000"}
+        strokeOpacity={status === "Construction" ? 0.9 : 0.8}
+        strokeWidth={status === "Construction" ? 1.2 : 0.8}
         strokeDasharray={status === "Construction" ? "3,3" : "none"}
-        strokeLinejoin="round"
+        strokeLinejoin="miter"
       />
 
       {/* Inner curve highlight for hyperboloid feel - only for solid towers */}
@@ -170,10 +170,10 @@ function PlantNodeImpl({ plant, x, y, metricMode, selected, onHover, onLeave, on
           className="plant-ring"
           d={towerPath(node + 4)}
           fill="none"
-          stroke={status === "Construction" ? "#38bdf8" : "#ffffff"}
-          strokeOpacity={0.9}
-          strokeWidth={1.8}
-          strokeLinejoin="round"
+          stroke={status === "Construction" ? "#d946ef" : "#ff8c00"}
+          strokeOpacity={1}
+          strokeWidth={1.6}
+          strokeLinejoin="miter"
         />
       )}
 
