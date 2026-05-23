@@ -7,5 +7,5 @@ holtec-palisades,Holtec Palisades SMR-300,MI,42.3239,-86.3151,Holtec,SMR-300,Hol
 oklo-idaho,Oklo Aurora INL,ID,43.5167,-112.9533,Oklo,Aurora,Oklo Inc.,,1,15,nrc_engaged,2027,52-048,https://www.nrc.gov/reactors/new-reactors/smr/licensing-activities/aurora.html
 kairos-hermes,Kairos Hermes,TN,35.9233,-84.3120,Kairos,KP-FHR,Kairos Power,Tennessee Valley Authority,1,35,under_construction,2027,50-7513,https://www.nrc.gov/reactors/non-power/new-fac/kairos-hermes.html
 last-energy-haskell,Last Energy Haskell County,TX,33.1577,-99.7333,Last Energy,PWR-20,Last Energy,,4,80,announced,2027,,https://www.lastenergy.com/news/last-energy-texas
-ge-hitachi-darlington-style-ny,GE Hitachi BWRX-300 NY Pilot,NY,43.5230,-76.0980,GE Hitachi,BWRX-300,New York Power Authority,,1,300,announced,2033,,https://www.nypa.gov/news/press-releases
-westinghouse-ap300-pilot,Westinghouse AP300 Pilot Site,VA,37.7960,-78.1340,Westinghouse,AP300,Dominion Energy,Dominion Energy,1,300,announced,2032,,https://www.westinghousenuclear.com/energy-systems/ap300-smr
+ge-hitachi-darlington-style-ny,GE Hitachi BWRX-300 NY Pilot,NY,43.5230,-76.3980,GE Hitachi,BWRX-300,New York Power Authority,,1,300,announced,2033,,https://www.nypa.gov/news/press-releases
+westinghouse-ap300-pilot,Westinghouse AP300 Pilot Site,VA,38.0610,-77.7900,Westinghouse,AP300,Dominion Energy,Dominion Energy,1,300,announced,2032,,https://www.westinghousenuclear.com/energy-systems/ap300-smr

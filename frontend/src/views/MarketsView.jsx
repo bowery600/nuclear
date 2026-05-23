@@ -22,7 +22,7 @@ function fmt(n, digits = 2) {
   return Number(n).toLocaleString("en-US", { minimumFractionDigits: digits, maximumFractionDigits: digits });
 }
 
-export default function MarketsView({ plants, tick, onHighlightTicker }) {
+export default function MarketsView({ plants, tick, onHighlightTicker, highlightTicker }) {
   return (
     <div className="markets-view">
       <div className="markets-fuel-col">
@@ -60,8 +60,8 @@ export default function MarketsView({ plants, tick, onHighlightTicker }) {
               <th>Ticker</th>
               <th>Name</th>
               <th className="num">Price</th>
-              <th className="num">Δ</th>
-              <th className="num">Δ%</th>
+              <th className="num">Delta</th>
+              <th className="num">Delta %</th>
               <th>Chart</th>
               <th className="num">Mkt Cap</th>
             </tr>
@@ -71,7 +71,11 @@ export default function MarketsView({ plants, tick, onHighlightTicker }) {
               const q = quoteAt(eq, tick);
               const up = q.delta >= 0;
               return (
-                <tr key={eq.ticker} onClick={() => onHighlightTicker && onHighlightTicker(eq.ticker)}>
+                <tr
+                  key={eq.ticker}
+                  className={highlightTicker === eq.ticker ? "is-highlighted" : ""}
+                  onClick={() => onHighlightTicker && onHighlightTicker(eq.ticker)}
+                >
                   <td className="ticker-cell">{eq.ticker}</td>
                   <td className="name-cell">{eq.name}</td>
                   <td className="num">${fmt(q.price)}</td>

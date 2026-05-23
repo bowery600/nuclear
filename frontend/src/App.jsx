@@ -35,6 +35,9 @@ import Odometer from "./map/Odometer";
 import MarketsView from "./views/MarketsView";
 import OutagesView from "./views/OutagesView";
 import PipelineView from "./views/PipelineView";
+import NewsOverlay from "./overlays/NewsOverlay";
+import CommandPalette from "./overlays/CommandPalette";
+import { EQUITIES, plantsForEquity } from "./data/equitiesSeed";
 
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "";
@@ -237,6 +240,7 @@ function App() {
   const [overlay, setOverlay] = useState(null); // null | "news" | "cmd" | "archives"
   const [activeView, setActiveView] = useState("map");
   const [highlightTicker, setHighlightTicker] = useState(null);
+  const [pipelineVendorFilter, setPipelineVendorFilter] = useState("ALL");
 
   // States for 3D reactor overlays and manual power factor overrides
   const [plantOverrides, setPlantOverrides] = useState({});
@@ -326,6 +330,17 @@ function App() {
     };
   }, [plants, fluctuationFactor, timelineYear, plantOverrides]);
 
+  const highlightedPlants = useMemo(() => {
+    if (!highlightTicker) return [];
+    const equity = EQUITIES.find((item) => item.ticker === highlightTicker);
+    if (!equity) return [];
+    return plantsForEquity(equity, animatedPlants.features);
+  }, [highlightTicker, animatedPlants]);
+
+  const highlightedPlantIds = useMemo(() => {
+    return new Set(highlightedPlants.map((feature) => feature.properties?.id ?? feature.id));
+  }, [highlightedPlants]);
+
   const activeSelectedPlant = useMemo(() => {
     if (!selectedPlant) return null;
     const active = animatedPlants.features.find((f) => f.properties?.id === selectedPlant.properties?.id);
@@ -409,6 +424,18 @@ function App() {
   }, []);
 
   useEffect(() => {
+    function handleKeyDown(event) {
+      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "k") {
+        event.preventDefault();
+        setOverlay((current) => (current === "cmd" ? null : "cmd"));
+      }
+    }
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, []);
+
+  useEffect(() => {
     const plantId = selectedPlant?.properties?.id;
     if (!plantId) {
       return;
@@ -446,6 +473,50 @@ function App() {
     selectPlant(null);
   }
 
+  const dispatchCommand = useCallback((action) => {
+    switch (action.type) {
+      case "view":
+        setActiveView(action.view);
+        break;
+      case "overlay":
+        setOverlay(action.overlay);
+        break;
+      case "ticker":
+        setHighlightTicker(action.ticker);
+        setActiveView("markets");
+        break;
+      case "plant": {
+        const found = animatedPlants.features.find((feature) => {
+          return String(feature.properties?.id) === String(action.plantId);
+        });
+        if (found) {
+          setQuery("");
+          setActiveView("map");
+          selectPlant(found);
+        }
+        break;
+      }
+      case "state":
+        setActiveView("map");
+        setQuery(action.state);
+        break;
+      case "iso":
+        setActiveView("map");
+        setQuery(action.iso);
+        break;
+      case "owner":
+        setActiveView("map");
+        setQuery(action.owner);
+        break;
+      case "vendor":
+        setActiveView("pipeline");
+        setPipelineVendorFilter(action.vendor);
+        break;
+      default:
+        break;
+    }
+  }, [animatedPlants, selectPlant]);
+
   return (
     <main className="app-shell">
       <section className="map-stage" aria-label="Nuclear plant map">
@@ -458,7 +529,20 @@ function App() {
             onUpdatePlantMetrics={handleUpdatePlantMetrics}
             show3DOverlay={show3DOverlay}
             setShow3DOverlay={setShow3DOverlay}
+            highlightedPlantIds={highlightedPlantIds}
           />
+        )}
+
+        {activeView === "map" && highlightTicker && (
+          <div className="highlight-banner" role="status">
+            <span className="hb-ticker">{highlightTicker}</span>
+            <span>
+              Highlighting {highlightedPlants.length} plant{highlightedPlants.length === 1 ? "" : "s"} linked to this ticker
+            </span>
+            <button type="button" onClick={() => setHighlightTicker(null)} aria-label="Clear ticker highlight">
+              x
+            </button>
+          </div>
         )}
 
         {activeView === "markets" && (
@@ -466,6 +550,7 @@ function App() {
             plants={animatedPlants.features}
             tick={fluctuationFactor}
             onHighlightTicker={setHighlightTicker}
+            highlightTicker={highlightTicker}
           />
         )}
         {activeView === "outages" && (
@@ -476,7 +561,7 @@ function App() {
             onSwitchView={setActiveView}
           />
         )}
-        {activeView === "pipeline" && <PipelineView />}
+        {activeView === "pipeline" && <PipelineView requestedVendor={pipelineVendorFilter} />}
 
         <TopRail
           query={query}
@@ -541,8 +626,8 @@ function App() {
         <button className="util-chip" onClick={() => setOverlay(overlay === "news" ? null : "news")} title="News feed">
           <Newspaper size={14} /><span>NEWS</span>
         </button>
-        <button className="util-chip" onClick={() => setOverlay(overlay === "cmd" ? null : "cmd")} title="Command palette (⌘K)">
-          <Command size={14} /><span>CMD</span><kbd className="chip-kbd">⌘K</kbd>
+        <button className="util-chip" onClick={() => setOverlay(overlay === "cmd" ? null : "cmd")} title="Command palette (Ctrl+K)">
+          <Command size={14} /><span>CMD</span><kbd className="chip-kbd">Ctrl+K</kbd>
         </button>
         <button className="util-chip" onClick={() => setOverlay(overlay === "archives" ? null : "archives")} title="Archives">
           <Archive size={14} /><span>ARCH</span>
@@ -550,6 +635,23 @@ function App() {
       </div>
 
       {overlay === "archives" && <NuclearHistory onClose={() => setOverlay(null)} />}
+      {overlay === "news" && (
+        <NewsOverlay
+          onClose={() => setOverlay(null)}
+          onTicker={(ticker) => {
+            setHighlightTicker(ticker);
+            setActiveView("markets");
+            setOverlay(null);
+          }}
+        />
+      )}
+      {overlay === "cmd" && (
+        <CommandPalette
+          plantFeatures={animatedPlants.features}
+          onClose={() => setOverlay(null)}
+          onDispatch={dispatchCommand}
+        />
+      )}
     </main>
   );
 }

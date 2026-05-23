@@ -30,7 +30,7 @@ function towerPath(size) {
   );
 }
 
-function PlantNodeImpl({ plant, x, y, metricMode, selected, onHover, onLeave, onSelect, scale }) {
+function PlantNodeImpl({ plant, x, y, metricMode, selected, highlighted, onHover, onLeave, onSelect, scale, hidden }) {
   const props = plant.properties || {};
   const status = props.timelineStatus || "Active";
   const { type: pulseType, label: statusLabel, color: pulseColor } = getPlantStatusDetails(plant);
@@ -62,6 +62,7 @@ function PlantNodeImpl({ plant, x, y, metricMode, selected, onHover, onLeave, on
   ].filter(Boolean).join(", ") || "Plant";
 
   const handleKeyDown = (event) => {
+    if (hidden) return;
     if (event.key === "Enter" || event.key === " ") {
       event.preventDefault();
       event.stopPropagation();
@@ -71,20 +72,26 @@ function PlantNodeImpl({ plant, x, y, metricMode, selected, onHover, onLeave, on
 
   return (
     <g
-      className={`plant-node${selected ? " is-selected" : ""}`}
+      className={`plant-node${selected ? " is-selected" : ""}${highlighted ? " is-highlighted" : ""}`}
       transform={`translate(${x}, ${y}) scale(${invScale})`}
-      tabIndex={0}
+      tabIndex={hidden ? -1 : 0}
       role="button"
-      aria-label={label}
+      aria-label={highlighted ? `${label}, ticker highlight` : label}
       aria-pressed={selected}
-      onMouseEnter={() => onHover?.(plant)}
-      onMouseLeave={() => onLeave?.(plant)}
-      onFocus={() => onHover?.(plant)}
-      onBlur={() => onLeave?.(plant)}
+      onMouseEnter={() => !hidden && onHover?.(plant)}
+      onMouseLeave={() => !hidden && onLeave?.(plant)}
+      onFocus={() => !hidden && onHover?.(plant)}
+      onBlur={() => !hidden && onLeave?.(plant)}
       onKeyDown={handleKeyDown}
       onClick={(event) => {
+        if (hidden) return;
         event.stopPropagation();
         onSelect?.(plant);
+      }}
+      style={{
+        opacity: hidden ? 0 : 1,
+        pointerEvents: hidden ? "none" : "auto",
+        transition: "opacity 200ms ease"
       }}
     >
       {/* High-performance status pulse ring */}
@@ -106,6 +113,24 @@ function PlantNodeImpl({ plant, x, y, metricMode, selected, onHover, onLeave, on
           opacity={status === "Construction" ? 0.12 : 0.26}
           filter="url(#plantGlow)"
         />
+      )}
+
+      {highlighted && !hidden && (
+        <>
+          <circle
+            className="plant-highlight-glow"
+            r={glow + 7}
+            fill="#fbbf24"
+            opacity={0.2}
+          />
+          <circle
+            className="plant-highlight-ring"
+            r={node + 8}
+            fill="none"
+            stroke="#fbbf24"
+            strokeWidth={1.6}
+          />
+        </>
       )}
 
       {/* Steam plume rising from the tower top - active and not refueling */}

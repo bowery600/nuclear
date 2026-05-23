@@ -198,15 +198,16 @@ export default function StakeholderTree({ plant, ownership, onClose }) {
     });
 
     let i = 0;
+    let computedHeight = Math.max(height - 40, root.leaves().length * 65);
     update(root);
 
     // D3 Tree Render Update Cycle
     function update(source) {
       const nodeWidth = 240; // Horizontal spacing step
-      
+
       // Calculate temporary tree size based on open nodes
       const leafCount = root.leaves().length;
-      const computedHeight = Math.max(height - 40, leafCount * 65);
+      computedHeight = Math.max(height - 40, leafCount * 65);
 
       // Create tree layout
       const treeLayout = d3.tree().size([computedHeight, width - 120]);

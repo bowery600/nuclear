@@ -390,11 +390,74 @@ def upsert_company(cur: psycopg.Cursor, ticker: str, parent_company_name: str) -
     return int(cur.fetchone()[0])
 
 
+PRECISION_COORDINATES = {
+    "8055": (35.310377, -93.230983),  # Arkansas Nuclear
+    "6040": (40.621900, -80.433900),  # Beaver Valley
+    "6022": (41.243500, -88.228600),  # Braidwood
+    "46": (34.704200, -87.118600),    # Browns Ferry
+    "6014": (33.958700, -78.010100),  # Brunswick
+    "6023": (42.074200, -89.281900),  # Byron
+    "6153": (38.760800, -91.781700),  # Callaway
+    "6011": (38.434900, -76.441400),  # Calvert Cliffs
+    "6036": (35.051600, -81.069300),  # Catawba
+    "204": (40.173000, -88.834400),   # Clinton
+    "371": (46.471700, -119.334500),  # Columbia Generating Station
+    "6145": (32.298400, -97.785500),  # Comanche Peak
+    "8036": (40.362100, -95.641300),  # Cooper
+    "6000": (41.975600, -86.565200),  # D.C. Cook
+    "6149": (41.596700, -83.086100),  # Davis-Besse
+    "6099": (35.211500, -120.855700), # Diablo Canyon
+    "869": (41.390100, -88.270100),   # Dresden
+    "6001": (31.223100, -85.112300),  # Farley
+    "1729": (41.962200, -83.257900),  # Fermi
+    "6110": (43.523100, -76.398300),  # FitzPatrick
+    "6122": (43.278000, -77.308700),  # Ginna
+    "6072": (32.007600, -91.047900),  # Grand Gulf
+    "6051": (31.934200, -82.344400),  # Hatch
+    "6118": (39.466600, -75.537400),  # Hope Creek
+    "6026": (41.245500, -88.669100),  # La Salle
+    "6105": (40.224300, -75.587400),  # Limerick
+    "6038": (35.432400, -80.948600),  # McGuire
+    "566": (41.311500, -72.167800),   # Millstone
+    "1922": (45.334000, -93.849200),  # Monticello
+    "2589": (43.521400, -76.408300),  # Nine Mile Point
+    "6168": (38.061000, -77.790000),  # North Anna
+    "3265": (34.794000, -82.898200),  # Oconee
+    "1715": (42.323500, -86.314400),  # Palisades
+    "6008": (33.387800, -112.861700), # Palo Verde
+    "3166": (39.759000, -76.268600),  # Peach Bottom
+    "6020": (41.800600, -81.143900),  # Perry
+    "4046": (44.281900, -87.536900),  # Point Beach
+    "1925": (44.622000, -92.633300),  # Prairie Island
+    "880": (41.726100, -90.310300),   # Quad Cities
+    "6462": (30.756600, -91.331400),  # River Bend
+    "3251": (34.405200, -80.158800),  # Robinson
+    "6045": (27.348600, -80.246400),  # Saint Lucie
+    "2410": (39.463000, -75.535500),  # Salem
+    "6115": (42.899200, -70.848900),  # Seabrook
+    "6152": (35.226700, -85.092100),  # Sequoyah
+    "6015": (35.633400, -78.956100),  # Shearon Harris
+    "6251": (28.795000, -96.048100),  # South Texas
+    "6127": (34.297900, -81.315100),  # Summer
+    "3806": (37.165800, -76.697900),  # Surry
+    "6103": (41.091900, -76.146300),  # Susquehanna
+    "621": (25.435900, -80.331500),   # Turkey Point
+    "649": (33.142700, -81.762500),   # Vogtle
+    "4270": (29.994800, -90.471400),  # Waterford
+    "7722": (35.602100, -84.789500),  # Watts Bar
+    "210": (38.239600, -95.689300),   # Wolf Creek
+}
+
+
 def upsert_plant(cur: psycopg.Cursor, match: MatchedSite, company_id: int) -> None:
     h = match.hifld
-    latitude = h.get("LATITUDE") or h.get("geometry_y")
-    longitude = h.get("LONGITUDE") or h.get("geometry_x")
     plant_code = str(h["PLANT_CODE"])
+
+    if plant_code in PRECISION_COORDINATES:
+        latitude, longitude = PRECISION_COORDINATES[plant_code]
+    else:
+        latitude = h.get("LATITUDE") or h.get("geometry_y")
+        longitude = h.get("LONGITUDE") or h.get("geometry_x")
 
     cur.execute(
         """

@@ -2,7 +2,7 @@ import { useMemo } from "react";
 import { Zap, AlertCircle, Calendar, Activity } from "lucide-react";
 
 // Mirrors the rule in App.jsx animatedPlants: refueling when (plantId + year) % 13 === 0.
-// We project that across ±90 days by sweeping a synthetic "day" index that maps into the same modulus.
+// We project that across +/-90 days by sweeping a synthetic "day" index that maps into the same modulus.
 const HORIZON_DAYS = 90;
 
 function outagesForPlant(plant, year) {
@@ -53,7 +53,7 @@ export default function OutagesView({ plants, year, onSelectPlant, onSwitchView 
         </div>
         <div className="kpi-card">
           <div className="kpi-top"><Calendar size={14} /><span>Next Return</span></div>
-          <strong>{nextReturn !== undefined ? `T+${nextReturn}d` : "—"}</strong>
+          <strong>{nextReturn !== undefined ? `T+${nextReturn}d` : "--"}</strong>
         </div>
       </div>
 
@@ -67,7 +67,7 @@ export default function OutagesView({ plants, year, onSelectPlant, onSwitchView 
         </div>
         <div className="gantt-rows">
           {rows.length === 0 && (
-            <div className="gantt-empty">No outages scheduled in the ±90d window for year {year}.</div>
+            <div className="gantt-empty">No outages scheduled in the +/-90d window for year {year}.</div>
           )}
           {rows.map(({ plant, outage }) => {
             const left = ((outage.startOffset + HORIZON_DAYS) / trackWidth) * 100;
@@ -80,7 +80,7 @@ export default function OutagesView({ plants, year, onSelectPlant, onSwitchView 
                   onSelectPlant(plant);
                   onSwitchView("map");
                 }}
-                title={`${plant.properties.plant_name} — ${outage.duration}d refueling outage`}
+                title={`${plant.properties.plant_name} - ${outage.duration}d refueling outage`}
               >
                 <span className="gantt-row-label">{plant.properties.plant_name}</span>
                 <div className="gantt-track">

@@ -81,5 +81,27 @@ export function useZoom({ width, height, scaleExtent = [1, 8] }) {
     []
   );
 
-  return { svgRef, transform, animateToBounds, resetZoom };
+  const zoomIn = useCallback(
+    (duration = 220) => {
+      if (!svgRef.current || !zoomRef.current) return;
+      select(svgRef.current)
+        .transition()
+        .duration(duration)
+        .call(zoomRef.current.scaleBy, 1.4);
+    },
+    []
+  );
+
+  const zoomOut = useCallback(
+    (duration = 220) => {
+      if (!svgRef.current || !zoomRef.current) return;
+      select(svgRef.current)
+        .transition()
+        .duration(duration)
+        .call(zoomRef.current.scaleBy, 0.7);
+    },
+    []
+  );
+
+  return { svgRef, transform, animateToBounds, resetZoom, zoomIn, zoomOut };
 }

@@ -1,94 +1,96 @@
-import { useMemo, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
+import Odometer from "./Odometer";
+import { EQUITIES } from "../data/equitiesSeed";
 
-function formatMW(value) {
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "";
+const REFRESH_MS = 60_000;
+
+const FALLBACK_QUOTES = EQUITIES.slice(0, 10).map((item, index) => {
+  const direction = index % 3 === 1 ? -1 : 1;
+  const change = direction * item.basePrice * (0.0015 + index * 0.0004);
+  return {
+    symbol: item.ticker,
+    price: item.basePrice,
+    change,
+    change_percent: (change / item.basePrice) * 100
+  };
+});
+
+function formatPrice(value) {
   const n = Number(value);
-  if (!Number.isFinite(n)) return "----";
-  return new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 }).format(n);
+  if (!Number.isFinite(n)) return "--.--";
+  if (n >= 1000) return n.toLocaleString("en-US", { maximumFractionDigits: 0 });
+  return n.toFixed(2);
+}
+
+function formatChange(value) {
+  const n = Number(value);
+  if (!Number.isFinite(n)) return "0.00";
+  const sign = n > 0 ? "+" : n < 0 ? "-" : "";
+  return `${sign}${Math.abs(n).toFixed(2)}`;
 }
 
 function formatPct(value) {
   const n = Number(value);
-  if (!Number.isFinite(n)) return "--.-";
-  return n.toFixed(1);
+  if (!Number.isFinite(n)) return "0.00";
+  const sign = n > 0 ? "+" : n < 0 ? "-" : "";
+  return `${sign}${Math.abs(n).toFixed(2)}%`;
 }
 
-function tickerCode(name) {
-  if (!name) return "PLNT";
-  return name
-    .replace(/Nuclear|Generating|Station|Power|Plant/gi, "")
-    .replace(/[^A-Za-z0-9]/g, "")
-    .slice(0, 6)
-    .toUpperCase() || "PLNT";
-}
+export default function TickerRail() {
+  const [quotes, setQuotes] = useState(FALLBACK_QUOTES);
+  const cancelledRef = useRef(false);
 
-export default function TickerRail({ plants }) {
-  const prevPctRef = useRef(new Map());
+  useEffect(() => {
+    cancelledRef.current = false;
 
-  const items = useMemo(() => {
-    const features = plants?.features || [];
-    const prev = prevPctRef.current;
-    const next = new Map();
-
-    const rows = features.map((f) => {
-      const props = f.properties || {};
-      const id = props.id ?? props.plant_name;
-      const status = props.timelineStatus || "Active";
-      const pct = Number(props.capacity_percentage);
-      const mw = Number(props.current_mw_output);
-      const lmp = Number(props.current_power_cost_usd_mwh);
-      const prevPct = prev.get(id);
-      next.set(id, pct);
-
-      let dir = "flat";
-      if (Number.isFinite(prevPct) && Number.isFinite(pct)) {
-        if (pct > prevPct + 0.001) dir = "up";
-        else if (pct < prevPct - 0.001) dir = "down";
+    async function load() {
+      try {
+        const resp = await fetch(`${API_BASE_URL}/api/quotes`, {
+          headers: { Accept: "application/json" },
+        });
+        if (!resp.ok) return;
+        const data = await resp.json();
+        if (cancelledRef.current) return;
+        if (Array.isArray(data?.quotes)) setQuotes(data.quotes);
+      } catch {
+        // Network blip: keep last successful payload or seeded fallback.
       }
+    }
 
-      let tag = null;
-      if (status === "Construction") tag = { label: "CONST", cls: "const" };
-      else if (status === "Decommissioned") tag = { label: "DECOM", cls: "decom" };
-      else if (Number.isFinite(pct) && pct < 15) tag = { label: "REFUEL", cls: "refuel" };
+    load();
+    const id = setInterval(load, REFRESH_MS);
+    return () => {
+      cancelledRef.current = true;
+      clearInterval(id);
+    };
+  }, []);
 
-      return {
-        id,
-        code: tickerCode(props.plant_name),
-        mw,
-        pct,
-        lmp,
-        dir,
-        tag
-      };
-    });
+  if (quotes.length === 0) return null;
 
-    prevPctRef.current = next;
-    return rows;
-  }, [plants]);
-
-  if (items.length === 0) return null;
-
-  // duplicate sequence so the marquee can scroll seamlessly.
-  const doubled = [...items, ...items];
+  const doubled = [...quotes, ...quotes];
 
   return (
-    <div className="ticker-rail" aria-label="Live fleet ticker">
+    <div className="ticker-rail" aria-label="Nuclear sector live quotes">
       <div className="ticker-track">
-        {doubled.map((it, idx) => (
-          <div className="ticker-item" key={`${it.id}-${idx}`}>
-            <span className="ticker-name">{it.code}</span>
-            {it.tag ? (
-              <span className={`ticker-tag ${it.tag.cls}`}>{it.tag.label}</span>
-            ) : (
-              <>
-                <span className="ticker-val">{formatMW(it.mw)} MW</span>
-                <span className={`ticker-delta ${it.dir}`}>{formatPct(it.pct)}%</span>
-                {Number.isFinite(it.lmp) && (
-                  <span className="ticker-val">${it.lmp.toFixed(2)}</span>
-                )}
-              </>
-            )}
-          </div>
-        ))}
+        {doubled.map((q, idx) => {
+          const dir = q.change > 0 ? "up" : q.change < 0 ? "down" : "flat";
+          return (
+            <div className="ticker-item" key={`${q.symbol}-${idx}`}>
+              <span className="ticker-name">{q.symbol}</span>
+              <span className="ticker-val">
+                <Odometer value={"$" + formatPrice(q.price)} theme="white" inline />
+              </span>
+              <span className={`ticker-delta ${dir}`} style={{ display: 'inline-flex', alignItems: 'center' }}>
+                <Odometer
+                  value={`${formatChange(q.change)} (${formatPct(q.change_percent)})`}
+                  theme={dir === "up" ? "green" : dir === "down" ? "red" : "white"}
+                  inline
+                />
+              </span>
+            </div>
+          );
+        })}
       </div>
     </div>
   );

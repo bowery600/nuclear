@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import smrSites from "../data/smr_sites.json";
 
 // Ordered columns. Map any raw `phase` strings encountered in smr_sites.json to one of these.
@@ -11,7 +11,7 @@ const PHASES = [
   { id: "other",       label: "Other" }
 ];
 
-// Heuristic mapping of raw phase strings → column id. Add cases as new phases appear in the data.
+// Heuristic mapping of raw phase strings to column id. Add cases as new phases appear in the data.
 function bucketPhase(raw) {
   const p = (raw || "").toLowerCase();
   if (p.includes("operat")) return "operating";
@@ -31,7 +31,7 @@ function reactorFamily(model) {
   return "Other";
 }
 
-export default function PipelineView() {
+export default function PipelineView({ requestedVendor = "ALL" }) {
   const [vendorFilter, setVendorFilter] = useState("ALL");
   const [familyFilter, setFamilyFilter] = useState("ALL");
 
@@ -39,6 +39,12 @@ export default function PipelineView() {
     const set = new Set(smrSites.map((s) => s.vendor).filter(Boolean));
     return ["ALL", ...Array.from(set).sort()];
   }, []);
+
+  useEffect(() => {
+    if (vendors.includes(requestedVendor)) {
+      setVendorFilter(requestedVendor);
+    }
+  }, [requestedVendor, vendors]);
 
   const families = ["ALL", "LWR", "HTGR", "MSR", "SFR", "Other"];
 
@@ -85,11 +91,11 @@ export default function PipelineView() {
               {byPhase[phase.id].map((site) => (
                 <article key={site.site_id} className="pipeline-card">
                   <h3>{site.site_name}</h3>
-                  <div className="pipeline-card-row"><span>Vendor</span><strong>{site.vendor || "—"}</strong></div>
-                  <div className="pipeline-card-row"><span>Model</span><strong>{site.reactor_model || "—"}</strong></div>
-                  <div className="pipeline-card-row"><span>MWe</span><strong>{site.capacity_mwe_total ? site.capacity_mwe_total.toLocaleString() : "—"}</strong></div>
-                  <div className="pipeline-card-row"><span>COD</span><strong>{site.target_cod || "—"}</strong></div>
-                  <div className="pipeline-card-row"><span>Host</span><strong>{site.owner || "—"} ({site.state})</strong></div>
+                  <div className="pipeline-card-row"><span>Vendor</span><strong>{site.vendor || "--"}</strong></div>
+                  <div className="pipeline-card-row"><span>Model</span><strong>{site.reactor_model || "--"}</strong></div>
+                  <div className="pipeline-card-row"><span>MWe</span><strong>{site.capacity_mwe_total ? site.capacity_mwe_total.toLocaleString() : "--"}</strong></div>
+                  <div className="pipeline-card-row"><span>COD</span><strong>{site.target_cod || "--"}</strong></div>
+                  <div className="pipeline-card-row"><span>Host</span><strong>{site.owner || "--"} ({site.state})</strong></div>
                 </article>
               ))}
             </div>

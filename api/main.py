@@ -1,6 +1,11 @@
 from __future__ import annotations
 
+import json
 import os
+import time
+import urllib.error
+import urllib.request
+from concurrent.futures import ThreadPoolExecutor
 from contextlib import contextmanager
 from datetime import date, datetime
 from decimal import Decimal
@@ -136,6 +141,104 @@ app.add_middleware(
     allow_methods=["GET"],
     allow_headers=["*"],
 )
+
+
+NUCLEAR_TICKERS: tuple[tuple[str, str], ...] = (
+    # Utilities / IPPs with major nuclear fleets
+    ("CEG",  "Constellation"),
+    ("VST",  "Vistra"),
+    ("DUK",  "Duke"),
+    ("SO",   "Southern Co"),
+    ("EXC",  "Exelon"),
+    ("D",    "Dominion"),
+    ("AEP",  "AEP"),
+    ("XEL",  "Xcel"),
+    ("ETR",  "Entergy"),
+    ("PEG",  "PSEG"),
+    ("NEE",  "NextEra"),
+    ("PCG",  "PG&E"),
+    # SMR / advanced reactor developers
+    ("SMR",  "NuScale"),
+    ("OKLO", "Oklo"),
+    ("NNE",  "Nano Nuclear"),
+    ("LEU",  "Centrus"),
+    ("BWXT", "BWX Tech"),
+    ("BW",   "Babcock & Wilcox"),
+    # Uranium miners / fuel cycle
+    ("CCJ",  "Cameco"),
+    ("UEC",  "Uranium Energy"),
+    ("DNN",  "Denison"),
+    ("UUUU", "Energy Fuels"),
+    ("URG",  "Ur-Energy"),
+    ("NXE",  "NexGen Energy"),
+    # Uranium / nuclear ETFs
+    ("URA",  "Global X Uranium"),
+    ("URNM", "Sprott Uranium Miners"),
+    ("NLR",  "VanEck Nuclear"),
+)
+
+_QUOTES_CACHE: dict[str, Any] = {"at": 0.0, "data": []}
+_QUOTES_TTL_SECONDS = 60.0
+
+
+def _fetch_yahoo_quote(symbol: str) -> dict[str, Any] | None:
+    url = f"https://query1.finance.yahoo.com/v8/finance/chart/{symbol}?interval=1d&range=1d"
+    req = urllib.request.Request(
+        url,
+        headers={
+            "User-Agent": "Mozilla/5.0 (compatible; nuclear-map/1.0)",
+            "Accept": "application/json",
+        },
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=4) as resp:
+            payload = json.loads(resp.read().decode("utf-8"))
+    except (urllib.error.URLError, TimeoutError, ValueError):
+        return None
+
+    try:
+        result = payload["chart"]["result"][0]
+        meta = result["meta"]
+    except (KeyError, IndexError, TypeError):
+        return None
+
+    price = meta.get("regularMarketPrice")
+    prev = meta.get("chartPreviousClose") or meta.get("previousClose")
+    if price is None or prev is None or prev == 0:
+        return None
+
+    change = float(price) - float(prev)
+    pct = (change / float(prev)) * 100.0
+    return {
+        "symbol": symbol,
+        "price": float(price),
+        "previous_close": float(prev),
+        "change": change,
+        "change_percent": pct,
+        "currency": meta.get("currency", "USD"),
+    }
+
+
+@app.get("/api/quotes")
+def nuclear_quotes() -> dict[str, Any]:
+    now = time.time()
+    if _QUOTES_CACHE["data"] and (now - _QUOTES_CACHE["at"]) < _QUOTES_TTL_SECONDS:
+        return {"quotes": _QUOTES_CACHE["data"], "as_of": _QUOTES_CACHE["at"], "cached": True}
+
+    quotes: list[dict[str, Any]] = []
+    name_by_symbol = dict(NUCLEAR_TICKERS)
+    with ThreadPoolExecutor(max_workers=8) as pool:
+        for q in pool.map(_fetch_yahoo_quote, [s for s, _ in NUCLEAR_TICKERS]):
+            if q is None:
+                continue
+            q["name"] = name_by_symbol.get(q["symbol"], q["symbol"])
+            quotes.append(q)
+
+    if quotes:
+        _QUOTES_CACHE["data"] = quotes
+        _QUOTES_CACHE["at"] = now
+
+    return {"quotes": quotes, "as_of": now, "cached": False}
 
 
 @app.get("/api/plants")

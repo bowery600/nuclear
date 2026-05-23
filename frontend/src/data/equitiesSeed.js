@@ -23,7 +23,7 @@ function noise(seed, tick) {
 
 export function quoteAt(eq, tick) {
   const r = noise(eq.basePrice, tick);
-  const drift = (r - 0.5) * (eq.basePrice * 0.012); // ~±0.6% per tick
+  const drift = (r - 0.5) * (eq.basePrice * 0.012); // about +/-0.6% per tick
   const price = Math.max(0.01, eq.basePrice + drift);
   const dayOpen = eq.basePrice + (noise(eq.basePrice + 7, Math.floor(tick / 50)) - 0.5) * (eq.basePrice * 0.02);
   const delta = price - dayOpen;
@@ -40,7 +40,7 @@ export function sparkSeries(eq, tick) {
 }
 
 // Find plants in animatedPlants whose parent_company_name matches one of an equity's companyKeys.
-// Used by the MARKETS row-click → MAP highlight feature.
+// Used by the MARKETS row-click to MAP highlight feature.
 export function plantsForEquity(eq, plantFeatures) {
   if (!plantFeatures) return [];
   return plantFeatures.filter((feature) => {

@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { feature } from "topojson-client";
+import { Leaf } from "lucide-react";
+import { geoGraticule } from "d3-geo";
 import statesTopo from "us-atlas/states-10m.json";
 import isoRegions from "./iso-regions.json";
 import smrSitesData from "../data/smr_sites.json";
@@ -12,8 +14,29 @@ import SmrNode from "./SmrNode";
 import PlantTooltip from "./PlantTooltip";
 import SmrTooltip from "./SmrTooltip";
 import RegionChips from "./RegionChips";
+import ThermalCanvas from "./ThermalCanvas";
+import ThreeReactorOverlay from "./ThreeReactorOverlay";
 
 const statesFc = feature(statesTopo, statesTopo.objects.states);
+const nationFc = feature(statesTopo, statesTopo.objects.nation);
+
+function formatDMS(deg, isLat) {
+  if (!deg && deg !== 0) return "—";
+  const absolute = Math.abs(deg);
+  const degrees = Math.floor(absolute);
+  const minutesNotTruncated = (absolute - degrees) * 60;
+  const minutes = Math.floor(minutesNotTruncated);
+  const seconds = Math.floor((minutesNotTruncated - minutes) * 60);
+
+  let direction = "";
+  if (isLat) {
+    direction = deg >= 0 ? "N" : "S";
+  } else {
+    direction = deg >= 0 ? "E" : "W";
+  }
+
+  return `${degrees}° ${minutes}' ${seconds}" ${direction}`;
+}
 
 function useContainerSize(ref) {
   const [size, setSize] = useState({ width: 0, height: 0 });
@@ -32,9 +55,25 @@ function useContainerSize(ref) {
   return size;
 }
 
-export default function NuclearMap({ plants, selectedPlant, onSelect, metricMode }) {
+export default function NuclearMap({
+  plants,
+  selectedPlant,
+  onSelect,
+  metricMode,
+  onUpdatePlantMetrics,
+  show3DOverlay,
+  setShow3DOverlay,
+  highlightedPlantIds
+}) {
   const containerRef = useRef(null);
   const { width, height } = useContainerSize(containerRef);
+  const [showThermal, setShowThermal] = useState(true);
+  const [showGrid, setShowGrid] = useState(true);
+  const [showSMR, setShowSMR] = useState(true);
+  const [showFLOW, setShowFLOW] = useState(true);
+  const [hudCollapsed, setHudCollapsed] = useState(false);
+  const [cursorCoords, setCursorCoords] = useState(null);
+
   const features = plants?.features || [];
 
   const { projection, path } = useMemo(() => {
@@ -44,7 +83,11 @@ export default function NuclearMap({ plants, selectedPlant, onSelect, metricMode
     return createProjection(width, height);
   }, [width, height]);
 
-  const { svgRef, transform, animateToBounds, resetZoom } = useZoom({ width, height });
+  const graticuleGeo = useMemo(() => {
+    return geoGraticule().step([4, 4])();
+  }, []);
+
+  const { svgRef, transform, animateToBounds, resetZoom, zoomIn, zoomOut } = useZoom({ width, height });
   const [hoveredPlant, setHoveredPlant] = useState(null);
   const [hoveredSmr, setHoveredSmr] = useState(null);
   const [activeRegion, setActiveRegion] = useState(null);
@@ -124,6 +167,15 @@ export default function NuclearMap({ plants, selectedPlant, onSelect, metricMode
     animateToBounds(bbox, { top: 120, right: 460, bottom: 80, left: 80 }, 260);
   }, [selectedPlant, projection, animateToBounds]);
 
+  // Automatically trigger the 3D core overlay when zooming deeply into a selected plant
+  useEffect(() => {
+    if (selectedPlant && transform.k >= 5.0) {
+      setShow3DOverlay(true);
+    } else if (transform.k < 4.8) {
+      setShow3DOverlay(false);
+    }
+  }, [selectedPlant, transform.k, setShow3DOverlay]);
+
   const regionMeta = useMemo(() => {
     if (!path) return [];
     return isoRegions.features.map((f) => ({
@@ -158,6 +210,24 @@ export default function NuclearMap({ plants, selectedPlant, onSelect, metricMode
     setActiveRegion(null);
   };
 
+  const handleMouseMove = (e) => {
+    if (!projection || !containerRef.current) return;
+    const rect = containerRef.current.getBoundingClientRect();
+    const mouseX = e.clientX - rect.left;
+    const mouseY = e.clientY - rect.top;
+
+    // Account for pan and zoom transform
+    const transformedX = (mouseX - transform.x) / transform.k;
+    const transformedY = (mouseY - transform.y) / transform.k;
+
+    const coords = projection.invert([transformedX, transformedY]);
+    if (coords && Number.isFinite(coords[0]) && Number.isFinite(coords[1])) {
+      setCursorCoords({ lon: coords[0], lat: coords[1] });
+    } else {
+      setCursorCoords(null);
+    }
+  };
+
   const tooltipPos = useMemo(() => {
     if (!hoveredPlant || !projection) return null;
     const p = projectPlant(projection, hoveredPlant);
@@ -184,6 +254,8 @@ export default function NuclearMap({ plants, selectedPlant, onSelect, metricMode
         width={width || 0}
         height={height || 0}
         onClick={handleBackgroundClick}
+        onMouseMove={handleMouseMove}
+        onMouseLeave={() => setCursorCoords(null)}
       >
         <defs>
           {/* Stub kept so PlantNode's filter="url(#plantGlow)" still resolves; effectively no-op. */}
@@ -196,6 +268,20 @@ export default function NuclearMap({ plants, selectedPlant, onSelect, metricMode
           <g
             transform={`translate(${transform.x}, ${transform.y}) scale(${transform.k})`}
           >
+            {/* Contiguous US landmass background silhouette */}
+            <path
+              d={path(nationFc)}
+              className="nation-base"
+            />
+
+            {/* Curved dynamic lat/lon grid lines */}
+            {showGrid && (
+              <path
+                d={path(graticuleGeo)}
+                className="map-graticule"
+              />
+            )}
+
             <g className="iso-regions">
               {regionMeta.map((region) => {
                 const avg = lmpByIso.get(region.code);
@@ -230,7 +316,7 @@ export default function NuclearMap({ plants, selectedPlant, onSelect, metricMode
               ))}
             </g>
 
-            {ownershipLines.length > 0 && (
+            {showFLOW && ownershipLines.length > 0 && (
               <g className="ownership-lines">
                 {ownershipLines.map((line, index) => {
                   const sw = 1.6 / transform.k;
@@ -274,23 +360,26 @@ export default function NuclearMap({ plants, selectedPlant, onSelect, metricMode
               </g>
             )}
 
-            <g className="smr-layer">
-              {projectedSmrs.map(({ site, x, y }) => (
-                <SmrNode
-                  key={site.site_id}
-                  site={site}
-                  x={x}
-                  y={y}
-                  scale={transform.k}
-                  onHover={setHoveredSmr}
-                  onLeave={() => setHoveredSmr(null)}
-                />
-              ))}
-            </g>
+            {showSMR && (
+              <g className="smr-layer">
+                {projectedSmrs.map(({ site, x, y }) => (
+                  <SmrNode
+                    key={site.site_id}
+                    site={site}
+                    x={x}
+                    y={y}
+                    scale={transform.k}
+                    onHover={setHoveredSmr}
+                    onLeave={() => setHoveredSmr(null)}
+                  />
+                ))}
+              </g>
+            )}
 
             <g className="plant-nodes">
               {projectedPlants.map(({ feature: f, x, y }) => {
                 const fid = f.properties?.id ?? f.id;
+                const isNodeHidden = selectedId !== null && fid === selectedId && show3DOverlay;
                 return (
                   <PlantNode
                     key={fid ?? `${x}-${y}`}
@@ -299,10 +388,12 @@ export default function NuclearMap({ plants, selectedPlant, onSelect, metricMode
                     y={y}
                     metricMode={metricMode}
                     selected={selectedId !== null && fid === selectedId}
+                    highlighted={highlightedPlantIds?.has(fid)}
                     scale={transform.k}
                     onHover={setHoveredPlant}
                     onLeave={() => setHoveredPlant(null)}
                     onSelect={onSelect}
+                    hidden={isNodeHidden}
                   />
                 );
               })}
@@ -311,28 +402,126 @@ export default function NuclearMap({ plants, selectedPlant, onSelect, metricMode
         )}
       </svg>
 
-      <div className="smr-legend" aria-label="SMR layer legend">
-        <span className="smr-legend-title">SMR Sites</span>
-        <span className="smr-legend-item">
-          <svg width="14" height="14" viewBox="-7 -7 14 14" aria-hidden="true">
-            <circle r="5" fill="none" stroke="#94a3b8" strokeWidth="1.4" strokeDasharray="3 3" />
-          </svg>
-          Announced
-        </span>
-        <span className="smr-legend-item">
-          <svg width="14" height="14" viewBox="-7 -7 14 14" aria-hidden="true">
-            <circle r="5" fill="none" stroke="#60a5fa" strokeWidth="1.4" />
-          </svg>
-          NRC-Engaged
-        </span>
-        <span className="smr-legend-item">
-          <svg width="14" height="14" viewBox="-7 -7 14 14" aria-hidden="true">
-            <circle r="5" fill="none" stroke="#34d399" strokeWidth="1.4" />
-            <circle r="1.7" fill="#34d399" />
-          </svg>
-          Under Construction
-        </span>
+      <ThermalCanvas
+        width={width || 0}
+        height={height || 0}
+        transform={transform}
+        projectedPlants={projectedPlants}
+        show={showThermal}
+      />
+
+      <div className={`scada-hud${hudCollapsed ? " collapsed" : ""}`} aria-label="SCADA Telemetry and Map Controls">
+        <div className="scada-hud-header" onClick={() => setHudCollapsed(!hudCollapsed)}>
+          <span>📡 SCADA Instrument HUD</span>
+          <span>{hudCollapsed ? "[EXPAND]" : "[HIDE]"}</span>
+        </div>
+
+        <div className="scada-hud-body">
+          {/* Coordinates HUD */}
+          <div className="scada-hud-section">
+            <h4 className="scada-section-title">🛰️ Target Telemetry</h4>
+            <div className="scada-telemetry-row">
+              <span className="scada-telemetry-label">Latitude</span>
+              <span className="scada-telemetry-value cyan">{cursorCoords ? formatDMS(cursorCoords.lat, true) : "——"}</span>
+            </div>
+            <div className="scada-telemetry-row">
+              <span className="scada-telemetry-label">Longitude</span>
+              <span className="scada-telemetry-value cyan">{cursorCoords ? formatDMS(cursorCoords.lon, false) : "——"}</span>
+            </div>
+            <div className="scada-telemetry-row">
+              <span className="scada-telemetry-label">Scale Factor</span>
+              <span className="scada-telemetry-value amber">{transform.k.toFixed(2)}x</span>
+            </div>
+          </div>
+
+          {/* Operational overview stats */}
+          <div className="scada-hud-section">
+            <h4 className="scada-section-title">📊 Fleet Overview</h4>
+            <div className="scada-telemetry-row">
+              <span className="scada-telemetry-label">Active Sites</span>
+              <span className="scada-telemetry-value green">{plants?.filter?.(f => f.properties?.timelineStatus !== "Decommissioned").length || projectedPlants.filter(p => p.feature.properties?.timelineStatus !== "Decommissioned").length}</span>
+            </div>
+            <div className="scada-telemetry-row">
+              <span className="scada-telemetry-label">Decommissioned</span>
+              <span className="scada-telemetry-value" style={{ color: "var(--t-3)" }}>{plants?.filter?.(f => f.properties?.timelineStatus === "Decommissioned").length || projectedPlants.filter(p => p.feature.properties?.timelineStatus === "Decommissioned").length}</span>
+            </div>
+          </div>
+
+          {/* Layer Telemetry Controls */}
+          <div className="scada-hud-section">
+            <h4 className="scada-section-title">🎛️ Layer Telemetry</h4>
+            <button
+              className={`scada-toggle-btn${showGrid ? " active" : ""}`}
+              onClick={() => setShowGrid(!showGrid)}
+            >
+              <span>Grid Graticules</span>
+              <div className="scada-toggle-indicator" />
+            </button>
+            <button
+              className={`scada-toggle-btn${showThermal ? " active" : ""}`}
+              onClick={() => setShowThermal(!showThermal)}
+            >
+              <span>Env Shading (Canvas)</span>
+              <div className="scada-toggle-indicator" />
+            </button>
+            <button
+              className={`scada-toggle-btn${showSMR ? " active" : ""}`}
+              onClick={() => setShowSMR(!showSMR)}
+            >
+              <span>SMR Node Sites</span>
+              <div className="scada-toggle-indicator" />
+            </button>
+            <button
+              className={`scada-toggle-btn${showFLOW ? " active" : ""}`}
+              onClick={() => setShowFLOW(!showFLOW)}
+            >
+              <span>Ownership Flow</span>
+              <div className="scada-toggle-indicator" />
+            </button>
+          </div>
+
+          {/* Programmable Actions */}
+          <div className="scada-hud-section">
+            <h4 className="scada-section-title">🕹️ SCADA NAV SYSTEM</h4>
+            <div className="scada-action-grid">
+              <button className="scada-action-btn" onClick={() => zoomIn()} title="Zoom In">
+                <span>[+]</span>
+              </button>
+              <button className="scada-action-btn" onClick={() => zoomOut()} title="Zoom Out">
+                <span>[-]</span>
+              </button>
+              <button className="scada-action-btn" onClick={handleResetRegion} title="Reset View">
+                <span>[⌖]</span>
+              </button>
+            </div>
+          </div>
+        </div>
       </div>
+
+      {showSMR && (
+        <div className="smr-legend" aria-label="SMR layer legend">
+          <span className="smr-legend-title">SMR Sites</span>
+          <span className="smr-legend-item">
+            <svg width="14" height="14" viewBox="-7 -7 14 14" aria-hidden="true">
+              <circle r="5" fill="none" stroke="#94a3b8" strokeWidth="1.4" strokeDasharray="3 3" />
+            </svg>
+            Announced
+          </span>
+          <span className="smr-legend-item">
+            <svg width="14" height="14" viewBox="-7 -7 14 14" aria-hidden="true">
+              <circle r="5" fill="none" stroke="#60a5fa" strokeWidth="1.4" />
+            </svg>
+            NRC-Engaged
+          </span>
+          <span className="smr-legend-item">
+            <svg width="14" height="14" viewBox="-7 -7 14 14" aria-hidden="true">
+              <circle r="5" fill="none" stroke="#34d399" strokeWidth="1.4" />
+              <circle r="1.7" fill="#34d399" />
+            </svg>
+            Under Construction
+          </span>
+        </div>
+      )}
 
       <RegionChips
         regions={regionMeta}
@@ -343,6 +532,14 @@ export default function NuclearMap({ plants, selectedPlant, onSelect, metricMode
 
       {tooltipPos && <PlantTooltip plant={hoveredPlant} x={tooltipPos.x} y={tooltipPos.y} />}
       {smrTooltipPos && <SmrTooltip site={hoveredSmr} x={smrTooltipPos.x} y={smrTooltipPos.y} />}
+
+      {show3DOverlay && selectedPlant && (
+        <ThreeReactorOverlay
+          plant={selectedPlant}
+          onClose={() => setShow3DOverlay(false)}
+          onUpdatePlantMetrics={onUpdatePlantMetrics}
+        />
+      )}
     </div>
   );
 }

@@ -2,8 +2,8 @@
 // Replace with a real feed later; the API surface from this file is just an array of {id, label, unit, basePrice}.
 
 export const FUEL_CYCLE = [
-  { id: "u3o8",       label: "U₃O₈ Spot",      unit: "/lb",   basePrice: 80.50, dailyVolatility: 1.4 },
-  { id: "conversion", label: "UF₆ Conversion", unit: "/kgU",  basePrice: 82.00, dailyVolatility: 0.9 },
+  { id: "u3o8",       label: "U3O8 Spot",       unit: "/lb",   basePrice: 80.50, dailyVolatility: 1.4 },
+  { id: "conversion", label: "UF6 Conversion",  unit: "/kgU",  basePrice: 82.00, dailyVolatility: 0.9 },
   { id: "swu",        label: "SWU Enrichment", unit: "/SWU",  basePrice: 168.00, dailyVolatility: 2.1 }
 ];
 
