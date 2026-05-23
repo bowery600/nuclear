@@ -471,18 +471,22 @@ function App() {
 
         <TickerRail plants={animatedPlants} />
 
-        <TimelineSlider
-          activeYear={timelineYear}
-          onChangeYear={setTimelineYear}
-        />
+        {activeView === "map" && (
+          <>
+            <TimelineSlider
+              activeYear={timelineYear}
+              onChangeYear={setTimelineYear}
+            />
 
-        <MetricStrip
-          stats={stats}
-          status={status}
-          error={error}
-          replacementFuel={replacementFuel}
-          setReplacementFuel={setReplacementFuel}
-        />
+            <MetricStrip
+              stats={stats}
+              status={status}
+              error={error}
+              replacementFuel={replacementFuel}
+              setReplacementFuel={setReplacementFuel}
+            />
+          </>
+        )}
 
         {status === "error" && (
           <div className="map-alert" role="alert">
@@ -492,19 +496,21 @@ function App() {
         )}
       </section>
 
-      <OwnershipPanel
-        plant={activeSelectedPlant}
-        ownership={ownership}
-        status={ownershipStatus}
-        error={ownershipError}
-        onClose={closePanel}
-        onVisualizeTree={() => setShowTree(true)}
-        replacementFuel={replacementFuel}
-        timelineYear={timelineYear}
-        onInspectCore={() => setShow3DOverlay(true)}
-      />
+      {activeView === "map" && (
+        <OwnershipPanel
+          plant={activeSelectedPlant}
+          ownership={ownership}
+          status={ownershipStatus}
+          error={ownershipError}
+          onClose={closePanel}
+          onVisualizeTree={() => setShowTree(true)}
+          replacementFuel={replacementFuel}
+          timelineYear={timelineYear}
+          onInspectCore={() => setShow3DOverlay(true)}
+        />
+      )}
 
-      {showTree && activeSelectedPlant && ownership && (
+      {activeView === "map" && showTree && activeSelectedPlant && ownership && (
         <StakeholderTree
           plant={activeSelectedPlant}
           ownership={ownership}
