@@ -2,12 +2,10 @@ import { lazy, Suspense, useCallback, useEffect, useMemo, useState } from "react
 import {
   Activity,
   AlertCircle,
-  Archive,
   Building2,
   Car,
   Clock,
   Coins,
-  Command,
   DollarSign,
   Factory,
   GitBranch,
@@ -15,7 +13,6 @@ import {
   Leaf,
   Loader2,
   MapPin,
-  Newspaper,
   Percent,
   Sliders,
   Trees,
@@ -42,6 +39,7 @@ const OutagesView = lazy(() => import("./views/OutagesView"));
 const PipelineView = lazy(() => import("./views/PipelineView"));
 const NewsOverlay = lazy(() => import("./overlays/NewsOverlay"));
 const CommandPalette = lazy(() => import("./overlays/CommandPalette"));
+const TickerDetailDrawer = lazy(() => import("./overlays/TickerDetailDrawer"));
 
 const emptyCollection = {
   type: "FeatureCollection",
@@ -241,6 +239,7 @@ function App() {
   const [overlay, setOverlay] = useState(null); // null | "news" | "cmd" | "archives"
   const [activeView, setActiveView] = useState("map");
   const [highlightTicker, setHighlightTicker] = useState(null);
+  const [selectedTicker, setSelectedTicker] = useState(null);
   const [pipelineVendorFilter, setPipelineVendorFilter] = useState("ALL");
 
   // States for 3D reactor overlays and manual power factor overrides
@@ -412,6 +411,7 @@ function App() {
 
   const selectPlant = useCallback((feature) => {
     setShowTree(false);
+    setShow3DOverlay(false);
     if (!feature) {
       setSelectedPlant(null);
       setOwnership(null);
@@ -484,6 +484,7 @@ function App() {
         break;
       case "ticker":
         setHighlightTicker(action.ticker);
+        setSelectedTicker(action.ticker);
         setActiveView("markets");
         break;
       case "plant": {
@@ -549,10 +550,9 @@ function App() {
         {activeView === "markets" && (
           <Suspense fallback={null}>
             <MarketsView
-              plants={animatedPlants.features}
-              tick={fluctuationFactor}
               onHighlightTicker={setHighlightTicker}
               highlightTicker={highlightTicker}
+              onSelectTicker={setSelectedTicker}
             />
           </Suspense>
         )}
@@ -580,9 +580,11 @@ function App() {
           activeYear={timelineYear}
           activeView={activeView}
           onChangeView={setActiveView}
+          overlay={overlay}
+          onToggleOverlay={(nextOverlay) => setOverlay((current) => (current === nextOverlay ? null : nextOverlay))}
         />
 
-        <TickerRail plants={animatedPlants} />
+        <TickerRail plants={animatedPlants} onSelectTicker={setSelectedTicker} />
 
         {activeView === "map" && (
           <>
@@ -633,18 +635,6 @@ function App() {
         </Suspense>
       )}
 
-      <div className="chip-cluster" role="toolbar" aria-label="Utility actions">
-        <button className="util-chip" onClick={() => setOverlay(overlay === "news" ? null : "news")} title="News feed">
-          <Newspaper size={14} /><span>NEWS</span>
-        </button>
-        <button className="util-chip" onClick={() => setOverlay(overlay === "cmd" ? null : "cmd")} title="Command palette (Ctrl+K)">
-          <Command size={14} /><span>CMD</span><kbd className="chip-kbd">Ctrl+K</kbd>
-        </button>
-        <button className="util-chip" onClick={() => setOverlay(overlay === "archives" ? null : "archives")} title="Archives">
-          <Archive size={14} /><span>ARCH</span>
-        </button>
-      </div>
-
       {overlay === "archives" && (
         <Suspense fallback={null}>
           <NuclearHistory onClose={() => setOverlay(null)} />
@@ -656,6 +646,7 @@ function App() {
             onClose={() => setOverlay(null)}
             onTicker={(ticker) => {
               setHighlightTicker(ticker);
+              setSelectedTicker(ticker);
               setActiveView("markets");
               setOverlay(null);
             }}
@@ -668,6 +659,19 @@ function App() {
             plantFeatures={animatedPlants.features}
             onClose={() => setOverlay(null)}
             onDispatch={dispatchCommand}
+          />
+        </Suspense>
+      )}
+      {selectedTicker && (
+        <Suspense fallback={null}>
+          <TickerDetailDrawer
+            symbol={selectedTicker}
+            plants={animatedPlants.features}
+            onClose={() => setSelectedTicker(null)}
+            onHighlightTicker={(ticker) => {
+              setHighlightTicker(ticker);
+              setActiveView("map");
+            }}
           />
         </Suspense>
       )}

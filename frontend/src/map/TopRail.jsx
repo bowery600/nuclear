@@ -1,4 +1,4 @@
-import { Search, Loader2, MapPin, Factory } from "lucide-react";
+import { Archive, Command, Loader2, MapPin, Factory, Newspaper, Search } from "lucide-react";
 
 const TABS = [
   { id: "map",      label: "MAP" },
@@ -9,7 +9,7 @@ const TABS = [
 
 export default function TopRail({
   query, setQuery, visibleCount, status, activeYear,
-  activeView, onChangeView
+  activeView, onChangeView, overlay, onToggleOverlay
 }) {
   return (
     <header className="top-rail">
@@ -36,6 +36,36 @@ export default function TopRail({
           </button>
         ))}
       </nav>
+
+      <div className="rail-utils" role="toolbar" aria-label="Utility actions">
+        <button
+          type="button"
+          className={overlay === "news" ? "active" : ""}
+          onClick={() => onToggleOverlay?.("news")}
+          title="News feed"
+          aria-label="News feed"
+        >
+          <Newspaper size={14} /><span>NEWS</span>
+        </button>
+        <button
+          type="button"
+          className={overlay === "cmd" ? "active" : ""}
+          onClick={() => onToggleOverlay?.("cmd")}
+          title="Command palette (Ctrl+K)"
+          aria-label="Command palette"
+        >
+          <Command size={14} /><span>CMD</span><kbd>Ctrl+K</kbd>
+        </button>
+        <button
+          type="button"
+          className={overlay === "archives" ? "active" : ""}
+          onClick={() => onToggleOverlay?.("archives")}
+          title="Archives"
+          aria-label="Archives"
+        >
+          <Archive size={14} /><span>ARCH</span>
+        </button>
+      </div>
 
       <label className="search-box" htmlFor="plant-search">
         <Search size={18} aria-hidden="true" />

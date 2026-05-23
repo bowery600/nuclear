@@ -67,11 +67,13 @@ export default function NuclearMap({
   highlightedPlantIds
 }) {
   const containerRef = useRef(null);
+  const cursorFrameRef = useRef(null);
+  const pendingCursorCoordsRef = useRef(null);
   const { width, height } = useContainerSize(containerRef);
-  const [showThermal, setShowThermal] = useState(true);
+  const [showThermal, setShowThermal] = useState(false);
   const [showGrid, setShowGrid] = useState(true);
   const [showSMR, setShowSMR] = useState(true);
-  const [showFLOW, setShowFLOW] = useState(true);
+  const [showFLOW, setShowFLOW] = useState(false);
   const [hudCollapsed, setHudCollapsed] = useState(false);
   const [cursorCoords, setCursorCoords] = useState(null);
 
@@ -171,14 +173,13 @@ export default function NuclearMap({
     animateToBounds(bbox, { top: 120, right: 460, bottom: 80, left: 80 }, 260);
   }, [selectedPlant, projection, animateToBounds]);
 
-  // Automatically trigger the 3D core overlay when zooming deeply into a selected plant
   useEffect(() => {
-    if (selectedPlant && transform.k >= 5.0) {
-      setShow3DOverlay(true);
-    } else if (transform.k < 4.8) {
-      setShow3DOverlay(false);
-    }
-  }, [selectedPlant, transform.k, setShow3DOverlay]);
+    return () => {
+      if (cursorFrameRef.current) {
+        cancelAnimationFrame(cursorFrameRef.current);
+      }
+    };
+  }, []);
 
   const regionMeta = useMemo(() => {
     if (!path) return [];
@@ -225,10 +226,15 @@ export default function NuclearMap({
     const transformedY = (mouseY - transform.y) / transform.k;
 
     const coords = projection.invert([transformedX, transformedY]);
-    if (coords && Number.isFinite(coords[0]) && Number.isFinite(coords[1])) {
-      setCursorCoords({ lon: coords[0], lat: coords[1] });
-    } else {
-      setCursorCoords(null);
+    pendingCursorCoordsRef.current = coords && Number.isFinite(coords[0]) && Number.isFinite(coords[1])
+      ? { lon: coords[0], lat: coords[1] }
+      : null;
+
+    if (!cursorFrameRef.current) {
+      cursorFrameRef.current = requestAnimationFrame(() => {
+        cursorFrameRef.current = null;
+        setCursorCoords(pendingCursorCoordsRef.current);
+      });
     }
   };
 

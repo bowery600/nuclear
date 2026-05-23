@@ -9,7 +9,7 @@ export default function ThreeReactorOverlay({ plant, onClose, onUpdatePlantMetri
   const plantName = props.plant_name || "Nuclear Facility";
   
   // App-linked simulation states
-  const [controlRodDepth, setControlRodDepth] = useState(props.capacity_percentage || 90);
+  const [controlRodDepth, setControlRodDepth] = useState(Math.round(Number(props.capacity_percentage) || 90));
   const [selectedComponent, setSelectedComponent] = useState("rpv");
   const controlRodDepthRef = useRef(controlRodDepth);
   const selectedComponentRef = useRef(selectedComponent);
@@ -60,6 +60,17 @@ export default function ThreeReactorOverlay({ plant, onClose, onUpdatePlantMetri
   useEffect(() => {
     selectedComponentRef.current = selectedComponent;
   }, [selectedComponent]);
+
+  useEffect(() => {
+    function handleKeyDown(event) {
+      if (event.key === "Escape") {
+        onClose?.();
+      }
+    }
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [onClose]);
 
   // Slider change handler - Syncs physical rod height in 3D and metrics back to the parent state
   const handleRodSliderChange = (e) => {
@@ -469,7 +480,7 @@ export default function ThreeReactorOverlay({ plant, onClose, onUpdatePlantMetri
       canvasDom.removeEventListener("touchstart", handleTouchStart);
       canvasDom.removeEventListener("touchmove", handleTouchMove);
       canvasDom.removeEventListener("touchend", handleMouseUp);
-      if (mountRef.current && renderer.domElement) {
+      if (mountRef.current && renderer.domElement && mountRef.current.contains(renderer.domElement)) {
         mountRef.current.removeChild(renderer.domElement);
       }
       scene.clear();
@@ -562,7 +573,7 @@ export default function ThreeReactorOverlay({ plant, onClose, onUpdatePlantMetri
                   ? `${Math.round((Number(props.total_mw_capacity) || 1000) * (controlRodDepth / 100))} MW` 
                   : "0 MW (Shutdown)"}
               </strong>
-              <span className="metric-pct num">({controlRodDepth}%)</span>
+              <span className="metric-pct num">({Math.round(controlRodDepth)}%)</span>
             </div>
           </div>
           <div className="control-slider-wrapper">
