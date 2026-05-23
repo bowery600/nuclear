@@ -30,6 +30,7 @@ import { getPlantStatusDetails } from "./map/colors";
 import NuclearHistory from "./map/NuclearHistory";
 import Odometer from "./map/Odometer";
 import MarketsView from "./views/MarketsView";
+import OutagesView from "./views/OutagesView";
 
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "";
@@ -463,7 +464,14 @@ function App() {
             onHighlightTicker={setHighlightTicker}
           />
         )}
-        {activeView === "outages"  && <div className="view-placeholder">OUTAGES view — coming soon</div>}
+        {activeView === "outages" && (
+          <OutagesView
+            plants={animatedPlants.features}
+            year={timelineYear}
+            onSelectPlant={selectPlant}
+            onSwitchView={setActiveView}
+          />
+        )}
         {activeView === "pipeline" && <div className="view-placeholder">PIPELINE view — coming soon</div>}
 
         <TopRail
