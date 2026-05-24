@@ -7,6 +7,8 @@ export default defineConfig({
     cssMinify: true,
     minify: "esbuild",
     reportCompressedSize: false,
+    // Three.js is intentionally isolated behind the lazy 3D Core Inspector.
+    chunkSizeWarningLimit: 650,
     sourcemap: false,
     rollupOptions: {
       output: {

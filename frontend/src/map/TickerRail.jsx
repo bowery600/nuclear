@@ -36,7 +36,7 @@ function formatPct(value) {
   return `${sign}${Math.abs(n).toFixed(2)}%`;
 }
 
-export default function TickerRail() {
+export default function TickerRail({ onSelectTicker }) {
   const [quotes, setQuotes] = useState(FALLBACK_QUOTES);
   const cancelledRef = useRef(false);
 
@@ -75,13 +75,19 @@ export default function TickerRail() {
         {doubled.map((q, idx) => {
           const dir = q.change > 0 ? "up" : q.change < 0 ? "down" : "flat";
           return (
-            <div className="ticker-item" key={`${q.symbol}-${idx}`}>
+            <button
+              type="button"
+              className="ticker-item"
+              key={`${q.symbol}-${idx}`}
+              onClick={() => onSelectTicker?.(q.symbol)}
+              title={`Open ${q.symbol} market details`}
+            >
               <span className="ticker-name">{q.symbol}</span>
               <span className="ticker-val">${formatPrice(q.price)}</span>
               <span className={`ticker-delta ${dir}`}>
                 {formatChange(q.change)} ({formatPct(q.change_percent)})
               </span>
-            </div>
+            </button>
           );
         })}
       </div>

@@ -5,10 +5,13 @@ import os
 import time
 import urllib.error
 import urllib.request
+import xml.etree.ElementTree as ET
 from concurrent.futures import ThreadPoolExecutor
 from contextlib import contextmanager
 from datetime import date, datetime
 from decimal import Decimal
+from email.utils import parsedate_to_datetime
+from html import unescape
 from pathlib import Path
 from typing import Any, Iterator
 
@@ -16,7 +19,7 @@ from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 
 import psycopg
 from dotenv import load_dotenv
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from psycopg.rows import dict_row
 
@@ -147,6 +150,7 @@ NUCLEAR_TICKERS: tuple[tuple[str, str], ...] = (
     # Utilities / IPPs with major nuclear fleets
     ("CEG",  "Constellation"),
     ("VST",  "Vistra"),
+    ("TLN",  "Talen"),
     ("DUK",  "Duke"),
     ("SO",   "Southern Co"),
     ("EXC",  "Exelon"),
@@ -161,6 +165,7 @@ NUCLEAR_TICKERS: tuple[tuple[str, str], ...] = (
     ("SMR",  "NuScale"),
     ("OKLO", "Oklo"),
     ("NNE",  "Nano Nuclear"),
+    ("GEV",  "GE Vernova"),
     ("LEU",  "Centrus"),
     ("BWXT", "BWX Tech"),
     ("BW",   "Babcock & Wilcox"),
@@ -179,10 +184,27 @@ NUCLEAR_TICKERS: tuple[tuple[str, str], ...] = (
 
 _QUOTES_CACHE: dict[str, Any] = {"at": 0.0, "data": []}
 _QUOTES_TTL_SECONDS = 60.0
+_QUOTE_HISTORY_CACHE: dict[tuple[str, str, str], dict[str, Any]] = {}
+_QUOTE_HISTORY_TTL_SECONDS = 300.0
+_NEWS_CACHE: dict[str, Any] = {"at": 0.0, "data": []}
+_NEWS_TTL_SECONDS = 600.0
+
+YAHOO_CHART_URL = "https://query1.finance.yahoo.com/v8/finance/chart/{symbol}"
+NEWS_FEEDS: tuple[tuple[str, str], ...] = (
+    (
+        "Google News",
+        "https://news.google.com/rss/search?"
+        "q=nuclear%20energy%20OR%20uranium%20OR%20SMR%20OR%20reactor%20when:7d"
+        "&hl=en-US&gl=US&ceid=US:en",
+    ),
+    (
+        "NRC",
+        "https://www.nrc.gov/reading-rm/doc-collections/news/rss/news.xml",
+    ),
+)
 
 
-def _fetch_yahoo_quote(symbol: str) -> dict[str, Any] | None:
-    url = f"https://query1.finance.yahoo.com/v8/finance/chart/{symbol}?interval=1d&range=1d"
+def _request_json(url: str, timeout: float = 5.0) -> dict[str, Any] | None:
     req = urllib.request.Request(
         url,
         headers={
@@ -191,17 +213,30 @@ def _fetch_yahoo_quote(symbol: str) -> dict[str, Any] | None:
         },
     )
     try:
-        with urllib.request.urlopen(req, timeout=4) as resp:
-            payload = json.loads(resp.read().decode("utf-8"))
+        with urllib.request.urlopen(req, timeout=timeout) as resp:
+            return json.loads(resp.read().decode("utf-8"))
     except (urllib.error.URLError, TimeoutError, ValueError):
         return None
 
+
+def _fetch_yahoo_chart(symbol: str, range_value: str = "1d", interval: str = "1d") -> dict[str, Any] | None:
+    params = urlencode({"interval": interval, "range": range_value})
+    payload = _request_json(f"{YAHOO_CHART_URL.format(symbol=symbol)}?{params}")
+    if not payload:
+        return None
+
     try:
-        result = payload["chart"]["result"][0]
-        meta = result["meta"]
+        return payload["chart"]["result"][0]
     except (KeyError, IndexError, TypeError):
         return None
 
+
+def _fetch_yahoo_quote(symbol: str) -> dict[str, Any] | None:
+    result = _fetch_yahoo_chart(symbol, "1d", "1d")
+    if not result:
+        return None
+
+    meta = result.get("meta") or {}
     price = meta.get("regularMarketPrice")
     prev = meta.get("chartPreviousClose") or meta.get("previousClose")
     if price is None or prev is None or prev == 0:
@@ -209,13 +244,21 @@ def _fetch_yahoo_quote(symbol: str) -> dict[str, Any] | None:
 
     change = float(price) - float(prev)
     pct = (change / float(prev)) * 100.0
+    market_time = meta.get("regularMarketTime")
     return {
         "symbol": symbol,
         "price": float(price),
         "previous_close": float(prev),
         "change": change,
         "change_percent": pct,
+        "open": json_value(meta.get("regularMarketOpen")),
+        "day_high": json_value(meta.get("regularMarketDayHigh")),
+        "day_low": json_value(meta.get("regularMarketDayLow")),
+        "volume": json_value(meta.get("regularMarketVolume")),
+        "market_time": datetime.utcfromtimestamp(market_time).isoformat() + "Z" if market_time else None,
         "currency": meta.get("currency", "USD"),
+        "exchange": meta.get("exchangeName"),
+        "source": "Yahoo Finance chart",
     }
 
 
@@ -239,6 +282,133 @@ def nuclear_quotes() -> dict[str, Any]:
         _QUOTES_CACHE["at"] = now
 
     return {"quotes": quotes, "as_of": now, "cached": False}
+
+
+@app.get("/api/quotes/{symbol}/history")
+def quote_history(
+    symbol: str,
+    range_: str = Query("1mo", alias="range"),
+    interval: str = "1d",
+) -> dict[str, Any]:
+    normalized_symbol = symbol.strip().upper()
+    allowed_ranges = {"1d", "5d", "1mo", "6mo", "1y", "5y"}
+    allowed_intervals = {"5m", "15m", "1d", "1wk", "1mo"}
+    range_value = range_ if range_ in allowed_ranges else "1mo"
+    interval_value = interval if interval in allowed_intervals else "1d"
+    cache_key = (normalized_symbol, range_value, interval_value)
+    now = time.time()
+
+    cached = _QUOTE_HISTORY_CACHE.get(cache_key)
+    if cached and (now - cached["at"]) < _QUOTE_HISTORY_TTL_SECONDS:
+        return {**cached["payload"], "cached": True}
+
+    result = _fetch_yahoo_chart(normalized_symbol, range_value, interval_value)
+    if not result:
+        raise HTTPException(status_code=502, detail="Quote history provider unavailable.")
+
+    timestamps = result.get("timestamp") or []
+    quote = ((result.get("indicators") or {}).get("quote") or [{}])[0]
+    closes = quote.get("close") or []
+    opens = quote.get("open") or []
+    highs = quote.get("high") or []
+    lows = quote.get("low") or []
+    volumes = quote.get("volume") or []
+
+    points: list[dict[str, Any]] = []
+    for index, ts in enumerate(timestamps):
+        close = closes[index] if index < len(closes) else None
+        if close is None:
+            continue
+        points.append({
+            "time": datetime.utcfromtimestamp(ts).isoformat() + "Z",
+            "close": json_value(close),
+            "open": json_value(opens[index]) if index < len(opens) else None,
+            "high": json_value(highs[index]) if index < len(highs) else None,
+            "low": json_value(lows[index]) if index < len(lows) else None,
+            "volume": json_value(volumes[index]) if index < len(volumes) else None,
+        })
+
+    payload = {
+        "symbol": normalized_symbol,
+        "range": range_value,
+        "interval": interval_value,
+        "currency": (result.get("meta") or {}).get("currency", "USD"),
+        "source": "Yahoo Finance chart",
+        "as_of": now,
+        "points": points,
+        "cached": False,
+    }
+    _QUOTE_HISTORY_CACHE[cache_key] = {"at": now, "payload": payload}
+    return payload
+
+
+def _fetch_rss_items(source: str, url: str, limit: int = 30) -> list[dict[str, Any]]:
+    req = urllib.request.Request(
+        url,
+        headers={
+            "User-Agent": "Mozilla/5.0 (compatible; nuclear-map/1.0)",
+            "Accept": "application/rss+xml, application/xml, text/xml",
+        },
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=5) as resp:
+            root = ET.fromstring(resp.read())
+    except (urllib.error.URLError, TimeoutError, ET.ParseError):
+        return []
+
+    out: list[dict[str, Any]] = []
+    for item in root.findall(".//item")[:limit]:
+        title = unescape(item.findtext("title") or "").strip()
+        link = (item.findtext("link") or "").strip()
+        description = unescape(item.findtext("description") or "").strip()
+        published_raw = item.findtext("pubDate") or item.findtext("published") or ""
+        published_at = None
+        if published_raw:
+            try:
+                published_at = parsedate_to_datetime(published_raw).isoformat()
+            except (TypeError, ValueError):
+                published_at = None
+        if title:
+            out.append({
+                "id": f"{source}:{link or title}",
+                "source": source,
+                "topic": "NEWS",
+                "headline": title,
+                "summary": description,
+                "url": link,
+                "published_at": published_at,
+                "tickers": [],
+            })
+    return out
+
+
+@app.get("/api/news")
+def nuclear_news() -> dict[str, Any]:
+    now = time.time()
+    if _NEWS_CACHE["data"] and (now - _NEWS_CACHE["at"]) < _NEWS_TTL_SECONDS:
+        return {"items": _NEWS_CACHE["data"], "as_of": _NEWS_CACHE["at"], "cached": True}
+
+    items: list[dict[str, Any]] = []
+    with ThreadPoolExecutor(max_workers=4) as pool:
+        for feed_items in pool.map(lambda feed: _fetch_rss_items(feed[0], feed[1]), NEWS_FEEDS):
+            items.extend(feed_items)
+
+    seen: set[str] = set()
+    deduped: list[dict[str, Any]] = []
+    for item in items:
+        key = item["headline"].lower()
+        if key in seen:
+            continue
+        seen.add(key)
+        deduped.append(item)
+
+    deduped.sort(key=lambda item: item.get("published_at") or "", reverse=True)
+    deduped = deduped[:40]
+    if deduped:
+        _NEWS_CACHE["data"] = deduped
+        _NEWS_CACHE["at"] = now
+
+    return {"items": deduped, "as_of": now, "cached": False}
 
 
 @app.get("/api/plants")

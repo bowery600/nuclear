@@ -1,18 +1,21 @@
 import { useEffect, useRef, useState } from "react";
 import * as THREE from "three";
 import { Sliders, Activity, Info, X, Zap } from "lucide-react";
+import { useDialogFocus } from "../hooks/useDialogFocus";
 
 export default function ThreeReactorOverlay({ plant, onClose, onUpdatePlantMetrics }) {
+  const dialogRef = useRef(null);
   const mountRef = useRef(null);
   
   const props = plant?.properties || {};
   const plantName = props.plant_name || "Nuclear Facility";
   
   // App-linked simulation states
-  const [controlRodDepth, setControlRodDepth] = useState(props.capacity_percentage || 90);
+  const [controlRodDepth, setControlRodDepth] = useState(Math.round(Number(props.capacity_percentage) || 90));
   const [selectedComponent, setSelectedComponent] = useState("rpv");
   const controlRodDepthRef = useRef(controlRodDepth);
   const selectedComponentRef = useRef(selectedComponent);
+  useDialogFocus(dialogRef, onClose, { initialFocus: ".close-btn" });
 
   // Multi-state component telemetry
   const telemetry = {
@@ -469,7 +472,7 @@ export default function ThreeReactorOverlay({ plant, onClose, onUpdatePlantMetri
       canvasDom.removeEventListener("touchstart", handleTouchStart);
       canvasDom.removeEventListener("touchmove", handleTouchMove);
       canvasDom.removeEventListener("touchend", handleMouseUp);
-      if (mountRef.current && renderer.domElement) {
+      if (mountRef.current && renderer.domElement && mountRef.current.contains(renderer.domElement)) {
         mountRef.current.removeChild(renderer.domElement);
       }
       scene.clear();
@@ -479,14 +482,20 @@ export default function ThreeReactorOverlay({ plant, onClose, onUpdatePlantMetri
   const activeTelemetry = telemetry[selectedComponent];
 
   return (
-    <div className="three-reactor-overlay">
+    <div
+      ref={dialogRef}
+      className="three-reactor-overlay"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="core-inspector-title"
+    >
       <div className="three-reactor-card">
         {/* Header */}
         <div className="three-reactor-header">
           <div className="title-block">
             <Zap className="accent-glow spin-on-hover" size={18} style={{ color: "#00d4ff" }} />
             <div>
-              <h3>3D Core Inspector</h3>
+              <h3 id="core-inspector-title">3D Core Inspector</h3>
               <span>{plantName}</span>
             </div>
           </div>
@@ -562,7 +571,7 @@ export default function ThreeReactorOverlay({ plant, onClose, onUpdatePlantMetri
                   ? `${Math.round((Number(props.total_mw_capacity) || 1000) * (controlRodDepth / 100))} MW` 
                   : "0 MW (Shutdown)"}
               </strong>
-              <span className="metric-pct num">({controlRodDepth}%)</span>
+              <span className="metric-pct num">({Math.round(controlRodDepth)}%)</span>
             </div>
           </div>
           <div className="control-slider-wrapper">
