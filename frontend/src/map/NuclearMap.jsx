@@ -87,7 +87,7 @@ export default function NuclearMap({
   const [showThermal, setShowThermal] = useState(false);
   const [showGrid, setShowGrid] = useState(true);
   const [showSMR, setShowSMR] = useState(true);
-  const [showFLOW, setShowFLOW] = useState(false);
+  const [showFLOW, setShowFLOW] = useState(true);
   const [hudCollapsed, setHudCollapsed] = useState(() => {
     return typeof window !== "undefined" && window.matchMedia("(max-width: 640px)").matches;
   });
